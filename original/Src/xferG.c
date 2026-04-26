@@ -2198,3 +2198,63 @@ align_xfer_keys PARM_0(void)
   }
 }
 
+
+/* Socket-based networking support */
+#include "sockets.h"
+
+static conquer_socket_t *network_socket = NULL;
+static int use_sockets = 0;
+
+/* Initialize network socket */
+int xfer_net_init(const char *host, int port, socket_type_e type) {
+    if (network_socket) {
+        socket_destroy(network_socket);
+    }
+    
+    network_socket = socket_create(type, host, port);
+    if (!network_socket) {
+        return -1;
+    }
+    
+    use_sockets = 1;
+    printf("Network socket initialized: %s:%d\n", host, port);
+    return 0;
+}
+
+/* Send lock state over network */
+static int send_lock_state(int slot) {
+    if (!use_sockets || !network_socket) return -1;
+    
+    char msg[256];
+    snprintf(msg, sizeof(msg), "LOCK|%d|%s|%d|%ld", 
+             slot, memory_locks[slot].locked_by, 
+             memory_locks[slot].is_locked,
+             (long)memory_locks[slot].lock_time);
+    
+    return socket_send(network_socket, msg, strlen(msg) + 1);
+}
+
+/* Receive lock state from network */
+static int recv_lock_state(void) {
+    if (!use_sockets || !network_socket) return -1;
+    
+    char buf[1024] = {0};
+    int len = socket_recv(network_socket, buf, sizeof(buf));
+    if (len <= 0) return -1;
+    
+    /* Parse: LOCK|slot|user|is_locked|time */
+    int slot, is_locked;
+    long lock_time;
+    char user[32] = {0};
+    
+    if (sscanf(buf, "LOCK|%d|%31[^|]|%d|%ld", 
+                &slot, user, &is_locked, &lock_time) == 4) {
+        if (slot >= 0 && slot <= 2) {
+            memory_locks[slot].is_locked = is_locked;
+            strncpy(memory_locks[slot].locked_by, user, 31);
+            memory_locks[slot].lock_time = (time_t)lock_time;
+            return 0;
+        }
+    }
+    return -1;
+}
