@@ -2594,3 +2594,58 @@ static int recv_encrypted_packet(packet_t *pkt) {
     
     return 0;
 }
+
+/* Multiplayer protocol integration */
+#include "multiplayer.h"
+
+/* Initialize multiplayer mode */
+int xfer_multiplayer_init(const char *host, int port, socket_type_e type) {
+    if (mp_init(host, port, type) != 0) {
+        return -1;
+    }
+    
+    printf("Multiplayer mode initialized on %s:%d\n", host, port);
+    return 0;
+}
+
+/* Process multiplayer packets */
+void xfer_multiplayer_process(void) {
+    mp_process_packets();
+}
+
+/* Join game as nation */
+int xfer_multiplayer_join(const char *player_name, int nation_id) {
+    return mp_join_game(player_name, nation_id);
+}
+
+/* Leave game */
+int xfer_multiplayer_leave(void) {
+    return mp_leave_game();
+}
+
+/* Turn management */
+int xfer_multiplayer_start_turn(void) {
+    return mp_start_turn();
+}
+
+int xfer_multiplayer_end_turn(void) {
+    return mp_end_turn();
+}
+
+/* Send game actions */
+int xfer_multiplayer_move(int unit_id, int from_x, int from_y, int to_x, int to_y) {
+    return mp_send_move(unit_id, from_x, from_y, to_x, to_y);
+}
+
+int xfer_multiplayer_attack(int attacker_id, int defender_id) {
+    return mp_send_attack(attacker_id, defender_id);
+}
+
+int xfer_multiplayer_chat(const char *message) {
+    return mp_send_chat(message);
+}
+
+/* Sync game state */
+int xfer_multiplayer_sync_state(const void *state, uint32_t state_size) {
+    return mp_broadcast_state(state, state_size);
+}
