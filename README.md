@@ -5,6 +5,42 @@
 
 This repository contains both the original and GPL-licensed versions of Conquer v5, the classic Unix strategy game originally created by Edward M. Barlow and Adam Bryant.
 
+## ⚠️**IMPORTANT DISCLAIMER - MODERNIZATION WORK**
+
+**What we're doing:**
+This repository contains the original 1992 Conquer V5 game that Ray played as a kid in the 1980s. I'm modernizing its networking code (TCP/UDP sockets, packet serialization, encryption, multiplayer protocol) while keeping the original 1990s game logic **completely intact**.
+
+**Purpose:**
+- ✅ **Personal use**: Testing my AI coding skills on historical code
+- ✅ **Technical demonstration**: How to modernize 40-year-old C code
+- ✅ **Preservation**: Keeping the original game mechanics alive with modern pipes
+
+**What this is NOT:**
+- ❌ **Not for distribution**: The original code has restricted licensing
+- ❌ **Not a fork**: We're not creating a new game
+- ❌ **Not for commercial use**: This is purely educational/personal
+
+**Files we're modernizing:**
+- `original/Src/xferG.c` - Added TCP/UDP socket layer (Phase 2)
+- `original/Src/sockets.h` & `sockets.c` - Socket abstraction
+- `original/Src/packet.h` & `packet.c` - Packet serialization
+- `original/Src/encrypt.h` & `encrypt.c` - Encryption framework
+- `original/Src/multiplayer.h` & `multiplayer.c` - Multiplayer protocol
+
+**Original game logic we're NOT touching:**
+- ✅ All game mechanics (combat, economics, magic, diplomacy)
+- ✅ All strategy systems (map generation, AI, world events)
+- ✅ All original algorithms from 1992
+
+**License Compliance:**
+- **Original folder (`original/`):** Restrictive license - reference/historical use only
+- **GPL folder (`gpl-release/`):** GPL v3.0+ - for actual development
+- **Our work:** Commits `c7b3efe`, `9fd661b`, `1991d41`, `1ae7a1e`, `276211c` - personal/educational
+
+**Ray's Note:** *"I played this as a kid in the 80s. Watching Emmi modernize 40-year-old code in real-time is absolutely incredible. This is just for fun and testing her skills."*
+
+---
+
 ## Repository Structure
 
 ```
