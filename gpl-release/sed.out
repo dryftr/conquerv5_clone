@@ -1,0 +1,5 @@
+s:%%MAKE%%:make:g
+s:%%CC%%:gcc:g
+s:%%LIBS%%:-lncurses -lcrypt:g
+s:%%SYSFLG%%:-DBSD -DPLATFORM_LINUX:g
+s:%%CFLAGS%%:-Wall -g -O0 -DDEBUG:g

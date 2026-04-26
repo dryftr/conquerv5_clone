@@ -1,0 +1,433 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 1987-1992 Ed Barlow <barlowedward@hotmail.com>
+# SPDX-FileCopyrightText: 1987-1992 Adam Bryant <adb@usa.com>
+# SPDX-FileCopyrightText: 2025 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# Conquer - Classic Multi-Player Strategy Game - Modernized Build Configuration
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# Relicensed to GPL v3+ with explicit permission from original authors.
+# For relicensing documentation, see RELICENSING-PERMISSIONS.md
+#
+# MODERNIZED CROSS-PLATFORM MAKEFILE
+#
+# This modernized Makefile provides:
+# - Automatic platform detection
+# - Cross-platform compiler support (GCC, Clang, MSVC)
+# - Modern compiler flags and optimizations
+# - Improved dependency handling
+# - Better error handling and diagnostics
+# - Preserves all original functionality
+#
+# To configure all of the Makefiles, first copy this file to
+# Makefile and then type "make Makefiles".
+#
+# Current Maintainer: Juan Manuel Méndez Rey <vejeta@gmail.com>
+# Project Repository: https://github.com/vejeta/conquerv5
+# Bug Reports: https://github.com/vejeta/conquerv5/issues
+
+
+# ================================================================
+# PLATFORM DETECTION
+# ================================================================
+
+UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
+UNAME_M := $(shell uname -m 2>/dev/null || echo unknown)
+
+ifeq ($(UNAME_S),Linux)
+    PLATFORM = linux
+    PLATFORM_FLAGS = -DPLATFORM_LINUX -DPLATFORM_UNIX
+    PLATFORM_LIBS = -lcrypt
+endif
+
+ifeq ($(UNAME_S),Darwin)
+    PLATFORM = macos
+    PLATFORM_FLAGS = -DPLATFORM_MACOS -DPLATFORM_UNIX
+    PLATFORM_LIBS =
+endif
+
+ifeq ($(UNAME_S),FreeBSD)
+    PLATFORM = freebsd
+    PLATFORM_FLAGS = -DPLATFORM_FREEBSD -DPLATFORM_UNIX
+    PLATFORM_LIBS = -lcrypt
+endif
+
+ifeq ($(UNAME_S),OpenBSD)
+    PLATFORM = openbsd
+    PLATFORM_FLAGS = -DPLATFORM_OPENBSD -DPLATFORM_UNIX
+    PLATFORM_LIBS =
+endif
+
+ifeq ($(UNAME_S),NetBSD)
+    PLATFORM = netbsd
+    PLATFORM_FLAGS = -DPLATFORM_NETBSD -DPLATFORM_UNIX
+    PLATFORM_LIBS = -lcrypt
+endif
+
+# ================================================================
+# LIBC DETECTION (for Alpine/musl compatibility)
+# ================================================================
+
+IS_ALPINE := $(shell test -f /etc/alpine-release && echo yes || echo no)
+
+ifeq ($(UNAME_S),Linux)
+    PLATFORM = linux
+    PLATFORM_FLAGS = -DPLATFORM_LINUX -DPLATFORM_UNIX
+    PLATFORM_LIBS = -lcrypt
+    # Add BSD function compatibility for Alpine Linux (musl libc)
+    ifeq ($(IS_ALPINE),yes)
+        PLATFORM_FLAGS += -D_DEFAULT_SOURCE -D_BSD_SOURCE
+    endif
+endif
+
+
+# ================================================================
+# COMPILER DETECTION
+# ================================================================
+
+ifeq ($(CC),)
+    CC := $(shell which gcc 2>/dev/null || which clang 2>/dev/null || which cc 2>/dev/null || echo gcc)
+endif
+
+CC_VERSION := $(shell $(CC) --version 2>/dev/null | head -n1)
+
+ifneq ($(findstring gcc,$(CC_VERSION)),)
+    COMPILER = gcc
+    COMPILER_FLAGS = -Wall -Wextra -Wshadow -Wpointer-arith -Wcast-qual
+endif
+
+ifneq ($(findstring clang,$(CC_VERSION)),)
+    COMPILER = clang
+    COMPILER_FLAGS = -Wall -Wextra -Wshadow -Wpointer-arith -Wcast-qual
+endif
+
+ifeq ($(COMPILER_FLAGS),)
+    COMPILER_FLAGS = -Wall
+endif
+
+# ================================================================
+# ADMINISTRATOR CONFIGURATION (FIXED)
+# ================================================================
+
+CURRENT_USER := $(shell whoami 2>/dev/null || echo $(USER) 2>/dev/null || echo "admin")
+LOGIN ?= $(CURRENT_USER)
+
+# ================================================================
+# BUILD CONFIGURATION
+# ================================================================
+
+BUILD ?= debug
+
+ifeq ($(BUILD),release)
+    OPTIMIZATION = -O2 -DNDEBUG
+    STRIP_BINARIES = yes
+else ifeq ($(BUILD),debug)
+    OPTIMIZATION = -g -O0 -DDEBUG
+    STRIP_BINARIES = no
+else
+    OPTIMIZATION = -O1 -g
+    STRIP_BINARIES = no
+endif
+
+# ================================================================
+# TOOLS AND UTILITIES
+# ================================================================
+
+MAKE = make
+MKDPND = makedepend
+MKDIR = mkdir -p
+SHELL := $(shell which bash 2>/dev/null || which sh 2>/dev/null || echo /bin/sh)
+CD = cd
+RM = rm -f
+CP = cp
+MV = mv
+ECHO = echo
+TOUCH = touch
+NULL = 2>/dev/null
+
+ifeq ($(STRIP_BINARIES),yes)
+    STRIP = strip
+else
+    STRIP = echo "Not stripping"
+endif
+
+# ================================================================
+# SYSTEM FLAGS (FIXED)
+# ================================================================
+
+ifeq ($(PLATFORM),linux)
+    SYSFLG = -DBSD $(PLATFORM_FLAGS)
+else ifeq ($(PLATFORM),macos)
+    SYSFLG = -DBSD $(PLATFORM_FLAGS)
+else ifeq ($(PLATFORM),freebsd)
+    SYSFLG = -DBSD $(PLATFORM_FLAGS)
+else ifeq ($(PLATFORM),openbsd)
+    SYSFLG = -DBSD $(PLATFORM_FLAGS)
+else ifeq ($(PLATFORM),netbsd)
+    SYSFLG = -DBSD $(PLATFORM_FLAGS)
+else
+    SYSFLG = -DBSD -DPLATFORM_UNIX
+endif
+
+# ================================================================
+# LIBRARY CONFIGURATION
+# ================================================================
+
+# Simple approach: detect common library locations
+HAS_NCURSES := $(shell test -f /usr/lib/libncurses.so -o -f /usr/lib/x86_64-linux-gnu/libncurses.so -o -f /lib/libncurses.so && echo yes || echo no)
+ifeq ($(HAS_NCURSES),yes)
+    BASE_LIBS = -lncurses
+else
+    BASE_LIBS = -lcurses
+endif
+
+# Check if we're in a musl environment by looking for typical musl indicators
+IS_MUSL := $(shell $(CC) -dumpmachine 2>/dev/null | grep -q musl && echo yes || echo no)
+
+# Simple termcap availability check
+HAS_TERMCAP := $(shell test -f /usr/lib/libtermcap.so -o -f /usr/lib/x86_64-linux-gnu/libtermcap.so && echo yes || echo no)
+
+ifeq ($(PLATFORM),linux)
+    ifeq ($(IS_MUSL),yes)
+        LIBS = $(BASE_LIBS) $(PLATFORM_LIBS)
+    else ifeq ($(HAS_TERMCAP),yes)
+        LIBS = $(BASE_LIBS) -ltermcap $(PLATFORM_LIBS)
+    else
+        LIBS = $(BASE_LIBS) $(PLATFORM_LIBS)
+    endif
+else ifeq ($(PLATFORM),macos)
+    LIBS = $(BASE_LIBS) -ltermcap $(PLATFORM_LIBS)
+else ifeq ($(PLATFORM),freebsd)
+    LIBS = $(BASE_LIBS) -ltermcap $(PLATFORM_LIBS)
+else ifeq ($(PLATFORM),openbsd)
+    LIBS = $(BASE_LIBS) -ltermcap $(PLATFORM_LIBS)
+else ifeq ($(PLATFORM),netbsd)
+    LIBS = $(BASE_LIBS) -ltermcap $(PLATFORM_LIBS)
+else
+    LIBS = $(BASE_LIBS) -ltermcap -lcrypt
+endif
+
+# ================================================================
+# COMPILER FLAGS (FIXED - NO LOGIN_FLAG)
+# ================================================================
+
+BASE_CFLAGS = $(COMPILER_FLAGS) $(OPTIMIZATION) $(SYSFLG)
+STD_FLAGS = -std=c99
+
+ifeq ($(BUILD),release)
+    PERF_FLAGS = -fomit-frame-pointer -ffast-math
+    CFLAGS = $(BASE_CFLAGS) $(STD_FLAGS) $(PERF_FLAGS)
+else
+    DEBUG_FLAGS = -fno-omit-frame-pointer -fstack-protector-strong
+    ifeq ($(COMPILER),gcc)
+        DEBUG_FLAGS += -fsanitize=address -fsanitize=undefined
+    endif
+    CFLAGS = $(BASE_CFLAGS) $(STD_FLAGS) $(DEBUG_FLAGS)
+endif
+
+CKFLAGS = $(CFLAGS)
+ifeq ($(COMPILER),gcc)
+    ifneq ($(findstring sparc,$(UNAME_M)),)
+        CKFLAGS = $(filter-out -O%,$(CFLAGS)) -O0
+    endif
+endif
+
+# ================================================================
+# INSTALLATION PATHS
+# ================================================================
+
+ifneq ($(shell id -u 2>/dev/null),0)
+    CHOWN = echo "... ignore (not root)"
+    CHMOD = chmod
+    PREFIX ?= $(HOME)/conquerv5
+else
+    CHOWN = chown games.games
+    CHMOD = chmod
+    PREFIX ?= /usr/local
+endif
+
+TOPDIR = $(PWD)
+DATADIR = $(PREFIX)/share/conquerv5
+BINDIR = $(PREFIX)/bin
+
+INCDIR = Include
+SRCDIR = Src
+AUXDIR = Auxil
+DOCDIR = Docs
+
+CQUER = conquer
+CQRUN = conqrun
+CQSORT = conqsort
+CXTRACT = cextract
+
+NROFF = nroff
+TROFF = groff -Tps
+
+HEADER_DIST := $(INCDIR)/header.h.dist
+HEADER := $(INCDIR)/header.h
+
+# ================================================================
+# SOURCE FILES
+# ================================================================
+
+GFILS = mainG.c armyG.c caravanG.c customG.c dataG.c displayG.c \
+emailG.c enlistG.c hexmapG.c ieditG.c infoG.c ioG.c iodataG.c \
+keybindG.c magicG.c mailG.c miscG.c moveG.c navyG.c ntninfoG.c \
+pagerG.c regionG.c sectorG.c selectG.c xferG.c time_ckG.c
+
+AFILS = mainA.c adduserA.c combatA.c configA.c createA.c dataA.c \
+economyA.c magicA.c mailA.c miscA.c monsterA.c moveA.c npcA.c sectorA.c \
+updateA.c
+
+XFILS = dataX.c datamagX.c datamilX.c checkX.c computeX.c convertX.c \
+customX.c executeX.c hexmapX.c ioX.c iodataX.c magicX.c mailX.c \
+memoryX.c miscX.c moveX.c sectorX.c selectX.c unitsX.c
+
+GOBJS = $(GFILS:.c=.o)
+AOBJS = $(AFILS:.c=.o)
+XOBJS = $(XFILS:.c=.o)
+
+# ================================================================
+# TARGETS
+# ================================================================
+
+.PHONY: all build install clean clobber Makefiles mkfiles makefiles info help
+
+all:
+	@echo "Conquer v5 Build System (Modernized)"
+	@echo "Platform: $(PLATFORM) ($(UNAME_S)/$(UNAME_M))"
+	@echo "Compiler: $(CC) ($(COMPILER))"
+	@echo "Build:    $(BUILD)"
+	@echo ""
+	@echo "Available targets:"
+	@echo "   make build       -- build everything"
+	@echo "   make install     -- install everything"
+	@echo "   make clean       -- clean up build files"
+	@echo "   make clobber     -- clean up all generated files"
+	@echo "   make Makefiles   -- configure all Makefiles properly"
+	@echo "   make info        -- show build configuration"
+
+info:
+	@echo "Build Configuration:"
+	@echo "  Platform:     $(PLATFORM)"
+	@echo "  System:       $(UNAME_S) $(UNAME_M)"
+	@echo "  Compiler:     $(CC)"
+	@echo "  Build Type:   $(BUILD)"
+	@echo "  Login:        $(LOGIN)"
+	@echo "  Flags:        $(CFLAGS)"
+	@echo "  Libraries:    $(LIBS)"
+
+# ================================================================
+# HEADER GENERATION (FIXED)
+# ================================================================
+
+$(HEADER): $(HEADER_DIST)
+	@echo "Generating $@ from $< (LOGIN=$(LOGIN))"
+	@awk -v login="$(LOGIN)" '/^[ \t]*#define[ \t]+LOGIN/ { print "#define LOGIN \"" login "\""; next } { print }' $< > $@
+
+# ================================================================
+# BUILD TARGETS
+# ================================================================
+
+build:
+	@echo "Building Conquer v5 ($(BUILD) mode on $(PLATFORM))..."
+	($(CD) $(SRCDIR) && $(MAKE) build)
+	($(CD) $(AUXDIR) && $(MAKE) build)
+	($(CD) $(DOCDIR) && $(MAKE) build)
+	@echo "Build complete!"
+
+install:
+	@echo "Installing Conquer v5 to $(PREFIX)..."
+	-$(MKDIR) $(DATADIR) $(BINDIR)
+	($(CD) $(SRCDIR) && $(MAKE) install)
+	($(CD) $(AUXDIR) && $(MAKE) install)
+	($(CD) $(DOCDIR) && $(MAKE) install)
+	@echo "Installation complete!"
+
+clean:
+	@echo "Cleaning build files..."
+	-($(CD) $(INCDIR) && $(MAKE) clean $(NULL))
+	-($(CD) $(SRCDIR) && $(MAKE) clean $(NULL))
+	-($(CD) $(AUXDIR) && $(MAKE) clean $(NULL))
+	-($(CD) $(DOCDIR) && $(MAKE) clean $(NULL))
+	-$(RM) *.o *~ \#* *.bak $(NULL)
+
+clobber:
+	@echo "Cleaning all generated files..."
+	-($(CD) $(INCDIR) && $(MAKE) clobber $(NULL))
+	-($(CD) $(SRCDIR) && $(MAKE) clobber $(NULL))
+	-($(CD) $(AUXDIR) && $(MAKE) clobber $(NULL))
+	-($(CD) $(DOCDIR) && $(MAKE) clobber $(NULL))
+	-$(RM) $(INCDIR)/Makefile $(SRCDIR)/Makefile $(NULL)
+	-$(RM) $(AUXDIR)/Makefile $(DOCDIR)/Makefile $(NULL)
+	-$(RM) $(INCDIR)/header.h sed.out $(NULL)
+
+# ================================================================
+# MAKEFILE GENERATION (COMPLETELY FIXED)
+# ================================================================
+
+mkfiles:
+	@echo "Configuring Makefiles for $(PLATFORM)..."
+	@echo 's:%%MAKE%%:$(MAKE):g' > sed.out
+	@echo 's:%%MKDPND%%:$(MKDPND):g' >> sed.out
+	@echo 's:%%MKDIR%%:$(MKDIR):g' >> sed.out
+	@echo 's:%%CD%%:$(CD):g' >> sed.out
+	@echo 's:%%CC%%:$(CC):g' >> sed.out
+	@echo 's:%%RM%%:$(RM):g' >> sed.out
+	@echo 's:%%CP%%:$(CP):g' >> sed.out
+	@echo 's:%%MV%%:$(MV):g' >> sed.out
+	@echo 's:%%ECHO%%:$(ECHO):g' >> sed.out
+	@echo 's:%%SHELL%%:$(SHELL):g' >> sed.out
+	@echo 's:%%STRIP%%:$(STRIP):g' >> sed.out
+	@echo 's:%%NULL%%:$(NULL):g' >> sed.out
+	@echo 's:%%TOUCH%%:$(TOUCH):g' >> sed.out
+	@echo 's:%%CHOWN%%:$(CHOWN):g' >> sed.out
+	@echo 's:%%CHMOD%%:$(CHMOD):g' >> sed.out
+	@echo 's:%%LOGIN%%:$(LOGIN):g' >> sed.out
+	@echo 's:%%LIBS%%:$(LIBS):g' >> sed.out
+	@echo 's:%%SYSFLG%%:$(SYSFLG):g' >> sed.out
+	@echo 's:%%CFLAGS%%:$(CFLAGS):g' >> sed.out
+	@echo 's:%%CKFLAGS%%:$(CKFLAGS):g' >> sed.out
+	@echo 's:%%TOPDIR%%:$(TOPDIR):g' >> sed.out
+	@echo 's:%%DATADIR%%:$(DATADIR):g' >> sed.out
+	@echo 's:%%BINDIR%%:$(BINDIR):g' >> sed.out
+	@echo 's:%%INCDIR%%:$(INCDIR):g' >> sed.out
+	@echo 's:%%SRCDIR%%:$(SRCDIR):g' >> sed.out
+	@echo 's:%%AUXDIR%%:$(AUXDIR):g' >> sed.out
+	@echo 's:%%DOCDIR%%:$(DOCDIR):g' >> sed.out
+	@echo 's:%%CQUER%%:$(CQUER):g' >> sed.out
+	@echo 's:%%CQRUN%%:$(CQRUN):g' >> sed.out
+	@echo 's:%%CQSORT%%:$(CQSORT):g' >> sed.out
+	@echo 's:%%CXTRACT%%:$(CXTRACT):g' >> sed.out
+	@echo 's:%%NROFF%%:$(NROFF):g' >> sed.out
+	@echo 's:%%TROFF%%:$(TROFF):g' >> sed.out
+	@echo 's:%%GFILS%%:$(GFILS):g' >> sed.out
+	@echo 's:%%AFILS%%:$(AFILS):g' >> sed.out
+	@echo 's:%%XFILS%%:$(XFILS):g' >> sed.out
+	@echo 's:%%GOBJS%%:$(GOBJS):g' >> sed.out
+	@echo 's:%%AOBJS%%:$(AOBJS):g' >> sed.out
+	@echo 's:%%XOBJS%%:$(XOBJS):g' >> sed.out
+	-sed -f sed.out $(INCDIR)/Makefile.inc > $(INCDIR)/Makefile
+	-sed -f sed.out $(SRCDIR)/Makefile.src > $(SRCDIR)/Makefile
+	-sed -f sed.out $(DOCDIR)/Makefile.dcm > $(DOCDIR)/Makefile
+	-sed -f sed.out $(AUXDIR)/Makefile.aux > $(AUXDIR)/Makefile
+	$(RM) sed.out $(NULL)
+	@echo "Makefiles configured successfully!"
+
+makefiles: mkfiles
+Makefiles: mkfiles
+
+Makefiles: $(HEADER)
+build: $(HEADER)
