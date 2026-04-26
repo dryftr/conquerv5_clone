@@ -2397,3 +2397,200 @@ int xfer_heartbeat_timeout(int timeout_ms) {
     }
     return 0;
 }
+
+/* Encryption support */
+#include "encrypt.h"
+
+static encrypt_ctx_t enc_ctx = { ENCRYPT_NONE, 0 };
+static int encryption_enabled = 0;
+
+/* Initialize encryption */
+int xfer_encrypt_init(encrypt_type_e type) {
+    if (encrypt_init(&enc_ctx, type) != 0) {
+        return -1;
+    }
+    encryption_enabled = (type != ENCRYPT_NONE);
+    printf("Encryption initialized: type %d\n", type);
+    return 0;
+}
+
+/* Send encrypted packet */
+static int send_encrypted_packet(packet_type_e type, const void *data, uint32_t len) {
+    if (!use_sockets || !network_socket) return -1;
+    
+    packet_t pkt;
+    if (packet_create(&pkt, type, data, len) != 0) {
+        return -1;
+    }
+    
+    /* Encrypt if enabled */
+    if (encryption_enabled) {
+        if (encrypt_packet(&enc_ctx, &pkt) != 0) {
+            return -1;
+        }
+    }
+    
+    return socket_send(network_socket, &pkt, 
+                       sizeof(packet_header_t) + ntohl(pkt.header.length));
+}
+
+/* Receive and decrypt packet */
+static int recv_encrypted_packet(packet_t *pkt) {
+    if (!use_sockets || !network_socket) return -1;
+    
+    /* Read header first */
+    if (socket_recv(network_socket, pkt, sizeof(packet_header_t)) 
+        != sizeof(packet_header_t)) {
+        return -1;
+    }
+    
+    /* Validate header */
+    if (packet_validate(pkt) != 0) {
+        return -1;
+    }
+    
+    /* Read payload */
+    uint32_t payload_len = ntohl(pkt->header.length);
+    if (payload_len > 0) {
+        if (socket_recv(network_socket, pkt->payload, payload_len) 
+            != payload_len) {
+            return -1;
+        }
+    }
+    
+    /* Decrypt if enabled */
+    if (encryption_enabled) {
+        packet_t decrypted;
+        if (decrypt_packet(&enc_ctx, pkt, &decrypted) != 0) {
+            return -1;
+        }
+        memcpy(pkt, &decrypted, sizeof(packet_t));
+    }
+    
+    return 0;
+}
+
+/* Wrapper functions for encrypted communication */
+int xfer_net_send_lock_encrypted(int slot) {
+    if (slot < 0 || slot > 2) return -1;
+    
+    char payload[128];
+    int len = snprintf(payload, sizeof(payload), 
+                      "%d|%s|%d|%d|%ld",
+                      slot,
+                      memory_locks[slot].locked_by,
+                      memory_locks[slot].is_locked,
+                      memory_locks[slot].ref_count,
+                      (long)memory_locks[slot].lock_time);
+    
+    return send_encrypted_packet(PACKET_LOCK_STATE, payload, len);
+}
+
+int xfer_net_recv_lock_encrypted(void) {
+    packet_t pkt;
+    if (recv_encrypted_packet(&pkt) != 0) {
+        return -1;
+    }
+    
+    if (ntohl(pkt.header.type) != PACKET_LOCK_STATE) {
+        return -1;
+    }
+    
+    uint32_t len = ntohl(pkt.header.length);
+    if (len > sizeof(pkt.payload)) return -1;
+    
+    char payload[1024];
+    memcpy(payload, pkt.payload, len);
+    payload[len] = '\0';
+    
+    int slot, is_locked, ref_count;
+    long lock_time;
+    char locked_by[32] = {0};
+    
+    if (sscanf(payload, "%d|%31[^|]|%d|%d|%ld",
+                &slot, locked_by, &is_locked, &ref_count, 
+                &lock_time) == 5) {
+        if (slot >= 0 && slot <= 2) {
+            memory_locks[slot].is_locked = is_locked;
+            strncpy(memory_locks[slot].locked_by, locked_by, 31);
+            memory_locks[slot].locked_by[31] = '\0';
+            memory_locks[slot].ref_count = ref_count;
+            memory_locks[slot].lock_time = (time_t)lock_time;
+            return 0;
+        }
+    }
+    return -1;
+}
+EOF'
+echo "Encryption integrated into xferG.c"
+/* Encryption support */
+#include "encrypt.h"
+
+static encrypt_ctx_t enc_ctx = { ENCRYPT_NONE, 0 };
+static int encryption_enabled = 0;
+
+/* Initialize encryption */
+int xfer_encrypt_init(encrypt_type_e type) {
+    if (encrypt_init(&enc_ctx, type) != 0) {
+        return -1;
+    }
+    encryption_enabled = (type != ENCRYPT_NONE);
+    printf("Encryption initialized: type %d\n", type);
+    return 0;
+}
+
+/* Send encrypted packet */
+static int send_encrypted_packet(packet_type_e type, const void *data, uint32_t len) {
+    if (!use_sockets || !network_socket) return -1;
+    
+    packet_t pkt;
+    if (packet_create(&pkt, type, data, len) != 0) {
+        return -1;
+    }
+    
+    /* Encrypt if enabled */
+    if (encryption_enabled) {
+        if (encrypt_packet(&enc_ctx, &pkt) != 0) {
+            return -1;
+        }
+    }
+    
+    return socket_send(network_socket, &pkt, 
+                       sizeof(packet_header_t) + len);
+}
+
+/* Receive and decrypt packet */
+static int recv_encrypted_packet(packet_t *pkt) {
+    if (!use_sockets || !network_socket) return -1;
+    
+    /* Read header first */
+    if (socket_recv(network_socket, pkt, sizeof(packet_header_t)) 
+        != sizeof(packet_header_t)) {
+        return -1;
+    }
+    
+    /* Validate header */
+    if (packet_validate(pkt) != 0) {
+        return -1;
+    }
+    
+    /* Read payload */
+    uint32_t payload_len = ntohl(pkt->header.length);
+    if (payload_len > 0) {
+        if (socket_recv(network_socket, pkt->payload, payload_len) 
+            != payload_len) {
+            return -1;
+        }
+    }
+    
+    /* Decrypt if enabled */
+    if (encryption_enabled) {
+        packet_t decrypted;
+        if (decrypt_packet(&enc_ctx, pkt, &decrypted) != 0) {
+            return -1;
+        }
+        memcpy(pkt, &decrypted, sizeof(packet_t));
+    }
+    
+    return 0;
+}
