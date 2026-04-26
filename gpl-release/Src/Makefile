@@ -1,12 +1,17 @@
 # Working Makefile for Conquer V5
 CC = gcc
-CFLAGS = -Wall -g -O0 -DDEBUG -I./Include -I../Include -DBSD -DPLATFORM_LINUX -DDEFAULTDIR=\"/home/rayray/conquerv5_clone/gpl-release\" -DEXEDIR=\"/home/rayray/conquerv5_clone/gpl-release\" -DCONQ_SORT=\"/home/rayray/conquerv5_clone/gpl-release/conqsort\"
+CFLAGS = -Wall -g -O0 -DDEBUG -I./Include -I../Include -DBSD -DPLATFORM_LINUX \
+         -DDEFAULTDIR=\"/home/rayray/conquerv5_clone/gpl-release\" \
+         -DEXEDIR=\"/home/rayray/conquerv5_clone/gpl-release\" \
+         -DCONQ_SORT=\"/home/rayray/conquerv5_clone/gpl-release/conqsort\" \
+         -lSDL2 -lSDL2_ttf
 
-# All source files except mainA.c (for conquer)
+# All source files except mainA.c (for conquer) + mainG.c (for conqrun)
 GAME_OBJS = $(filter-out mainA.o, $(wildcard *.c:.c=.o))
-
-# All source files except mainG.c + stubs.o (for conqrun)
 ADMIN_OBJS = $(filter-out mainG.o, $(wildcard *.c:.c=.o)) stubs.o
+
+# SDL2 display object (Phase 4)
+SDL2_DISPLAY_OBJS = sdl2_display.o
 
 all: conquer conqrun
 
@@ -20,6 +25,6 @@ conqrun: mainA.o $(ADMIN_OBJS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f *.o conquer conqrun
+	rm -f *.o sdl2_display.o conquer conqrun
 
 .PHONY: clean all
