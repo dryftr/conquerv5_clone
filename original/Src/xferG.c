@@ -2258,3 +2258,142 @@ static int recv_lock_state(void) {
     }
     return -1;
 }
+
+/* Packet-based networking */
+#include "packet.h"
+
+static packet_t send_buffer, recv_buffer;
+
+/* Send complete packet */
+static int send_packet(packet_type_e type, const void *data, uint32_t len) {
+    if (!use_sockets || !network_socket) return -1;
+    
+    packet_t pkt;
+    if (packet_create(&pkt, type, data, len) != 0) {
+        return -1;
+    }
+    
+    return socket_send(network_socket, &pkt, 
+                       sizeof(packet_header_t) + len);
+}
+
+/* Receive complete packet */
+static int recv_packet(packet_t *pkt) {
+    if (!use_sockets || !network_socket) return -1;
+    
+    /* Read header first */
+    if (socket_recv(network_socket, pkt, sizeof(packet_header_t)) 
+        != sizeof(packet_header_t)) {
+        return -1;
+    }
+    
+    /* Validate header */
+    if (packet_validate(pkt) != 0) {
+        return -1;
+    }
+    
+    /* Read payload */
+    uint32_t payload_len = ntohl(pkt->header.length);
+    if (payload_len > 0) {
+        if (socket_recv(network_socket, pkt->payload, payload_len) 
+            != payload_len) {
+            return -1;
+        }
+    }
+    
+    return 0;
+}
+
+/* Send lock state as packet */
+int xfer_net_send_lock(int slot) {
+    if (slot < 0 || slot > 2) return -1;
+    
+    char payload[128];
+    int len = snprintf(payload, sizeof(payload),
+                      "%d|%s|%d|%d|%ld",
+                      slot,
+                      memory_locks[slot].locked_by,
+                      memory_locks[slot].is_locked,
+                      memory_locks[slot].ref_count,
+                      (long)memory_locks[slot].lock_time);
+    
+    return send_packet(PACKET_LOCK_STATE, payload, len);
+}
+
+/* Receive lock state from packet */
+int xfer_net_recv_lock(void) {
+    packet_t pkt;
+    if (recv_packet(&pkt) != 0) {
+        return -1;
+    }
+    
+    if (ntohl(pkt.header.type) != PACKET_LOCK_STATE) {
+        return -1;
+    }
+    
+    uint32_t len = ntohl(pkt.header.length);
+    if (len > sizeof(pkt.payload)) return -1;
+    
+    char payload[1024];
+    memcpy(payload, pkt.payload, len);
+    payload[len] = '\0';
+    
+    int slot, is_locked, ref_count;
+    long lock_time;
+    char locked_by[32] = {0};
+    
+    if (sscanf(payload, "%d|%31[^|]|%d|%d|%ld",
+                &slot, locked_by, &is_locked, &ref_count, 
+                &lock_time) == 5) {
+        if (slot >= 0 && slot <= 2) {
+            memory_locks[slot].is_locked = is_locked;
+            strncpy(memory_locks[slot].locked_by, locked_by, 31);
+            memory_locks[slot].locked_by[31] = '\0';
+            memory_locks[slot].ref_count = ref_count;
+            memory_locks[slot].lock_time = (time_t)lock_time;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+/* Heartbeat mechanism */
+static time_t last_heartbeat = 0;
+static int heartbeat_interval = 30000; /* 30 seconds */
+
+int xfer_heartbeat_init(int interval_ms) {
+    heartbeat_interval = interval_ms;
+    last_heartbeat = time(NULL);
+    return 0;
+}
+
+int xfer_heartbeat_check(void) {
+    if (!use_sockets || !network_socket) return 0;
+    
+    time_t now = time(NULL);
+    if (difftime(now, last_heartbeat) * 1000 >= heartbeat_interval) {
+        /* Send heartbeat packet */
+        packet_t pkt;
+        char payload[64] = {0};
+        int len = snprintf(payload, sizeof(payload), "HEARTBEAT|%ld", (long)now);
+        
+        if (packet_create(&pkt, PACKET_HEARTBEAT, payload, len) == 0) {
+            if (socket_send(network_socket, &pkt, sizeof(packet_header_t) + len) > 0) {
+                last_heartbeat = now;
+                return 1; /* Heartbeat sent */
+            }
+        }
+    }
+    return 0; /* No heartbeat needed */
+}
+
+/* Check for heartbeat timeout */
+int xfer_heartbeat_timeout(int timeout_ms) {
+    if (!use_sockets || !network_socket) return 0;
+    
+    time_t now = time(NULL);
+    if (difftime(now, last_heartbeat) * 1000 > timeout_ms) {
+        return 1; /* Timeout */
+    }
+    return 0;
+}
