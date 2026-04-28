@@ -79,22 +79,82 @@ Modernization of the Conquer V5 classic strategy game, focusing on networking, g
 - **Private repo** (`conquer_rebirth`): Ray's personal fork for game mechanic changes and art
 - **Sprite system**: Local only, repo assignment TBD by Ray
 
-## FUTURE CONSIDERATIONS
+## PLANNED PHASES
 
-### Potential Phase 5: SVG Support
-- SVG sprites shelved as "maybe later"
+### Phase 5: Sprite Art & Map Integration (Next)
+**Status:** Planning — Ray designing art style
+**Depends on:** Phase 4d (sprite loader) ✅
+
+**5a: Sprite Art Creation**
+- Ray is designing the art style and creating real sprite PNGs
+- Replace 25 placeholder sprites with actual art
+- 32×32 base size, pointy-top hexes (corners get clipped by engine)
+- Keep important detail centered, pad edges for hex mask
+- Organized in `sprites/{terrain/elevation/, terrain/vegetation/, units/, navy/, buildings/, ui/}`
+- Animation via horizontal sprite strips configured in `sprites.json`
+- Reference: `SPRITE_LAYOUT.md` for naming conventions and status tracking
+
+**5b: Sprite Integration into Game Rendering**
+- Replace hex color fills in `hexmapG_sdl2.c` with sprite rendering calls
+- Wire `sprite_loader` into the main game display loop
+- Unit sprites (111 army types + 4 navy classes)
+- Building/desigation sprites (15 major + 13 minor designations)
+- UI sprites (cursor, selection, etc.)
+- Ensure fallback behavior remains for any missing sprites
+
+**5c: Map Polish**
+- Visual refinement of hex map at all zoom levels
+- Smooth zoom transitions
+- Consider minimap or overview display
+- Coordinate overlay options
+
+### Phase 6: NPC AI Decision Layer (Future)
+**Status:** Sketched — not started
+**Depends on:** Phase 5, thorough playtesting of resource mechanics
+
+The game has a solid NPC backbone (`executeX.h/c` — command execution system) but the NPC nations (Lizard, Savage, Nomad, Pirate) lack real decision-making. They exist but don't strategize. Adam Bryant was clearly moving toward tying the V5 resource system into NPC behavior but didn't complete it.
+
+**6a: NPC Goal System**
+- Define what NPCs want: resource security, territorial expansion, military advantage
+- Each NPC nation gets weighted goals based on race and class
+- Goals shift based on game state (war changes priorities)
+
+**6b: Utility AI Scoring**
+- Score all available `EX_*` commands against current NPC goals
+- Resource-aware: NPCs value sectors with materials they need
+- Target enemy supply lines and caravans (counter the feint problem)
+- Value scouting and information gathering
+- Add controlled randomness so behavior isn't perfectly predictable
+
+**6c: NPC Strategy Patterns**
+- Recognize feints: track enemy movement patterns, don't overcommit to obvious diversions
+- Resource targeting: attack where it hurts the enemy economy
+- Defensive positioning: protect supply centers, fortify chokepoints
+- Diplomatic behavior: react to player actions, not just static relations
+
+**6d: Difficulty Scaling**
+- Configurable AI aggressiveness and competence levels
+- Tie into existing campaign variables (Late Start, Growth Rate)
+- Allow per-NPC difficulty so some enemies are tougher than others
+
+**Why this matters:** The execute system already has all the resource commands (`EX_CITYMTRLS`, `EX_TAKEMTRLS`, `EX_GIVEMTRLS`, `EX_SCTMNRLS`). The plumbing exists. The brain doesn't. Adding resource-aware decision-making is what makes NPCs genuinely threatening rather than just present.
+
+### Future Considerations
+
+**SVG Sprite Support**
+- Shelved as "maybe later"
 - Would require nanosvg or resvg dependency
 - Re-rasterization cost is problematic for animation
 - Architecture supports it: sprite loader returns `SDL_Texture*`, format is the loader's business
 
-### Game Mechanic Changes
+**Game Mechanic Changes**
 - Ray has bigger change ideas — will go in private repo
 - Current game is playtestable, Ray is actively testing
 
-### Sprite Art
-- 25 placeholder PNGs currently in place (solid color gradients)
-- Real art design is Ray's next step
-- Sprite system is ready for custom assets
+**Real Encryption**
+- Current encryption layer is XOR placeholder
+- Needs real TLS/DTLS for production multiplayer
+- Architecture is ready: swap `encrypt.c` implementation without touching other layers
 
 ## KEY FILES
 
