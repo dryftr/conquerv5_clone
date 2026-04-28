@@ -9,7 +9,7 @@
 #include <math.h>
 
 /* Zoom level configurations */
-static const zoom_config_t zoom_configs[ZOOM_LEVELS] = {
+const zoom_config_t zoom_configs[ZOOM_LEVELS] = {
     /* ZOOM 0: Far - small hexes, many visible */
     {16,  14, 14,  16, 14,  7, 1, 0},
     /* ZOOM 1: Medium */
@@ -21,7 +21,7 @@ static const zoom_config_t zoom_configs[ZOOM_LEVELS] = {
 };
 
 /* Elevation colors (matching curses approximations) */
-static const SDL_Color elevation_colors[6] = {
+const SDL_Color elevation_colors[6] = {
     {0,   100, 200, 255},   /* 0: Water - Cyan-Blue */
     {144, 238, 144, 255},   /* 1: Valley - Light Green */
     {128, 128, 128, 255},   /* 2: Clear - Gray */
@@ -31,7 +31,7 @@ static const SDL_Color elevation_colors[6] = {
 };
 
 /* Vegetation colors */
-static const SDL_Color vegetation_colors[12] = {
+const SDL_Color vegetation_colors[12] = {
     {255,  69,   0, 255},   /* 0: Volcano - Red/Orange */
     {244, 164,  96, 255},   /* 1: Desert - Sandy */
     {230, 230, 250, 255},   /* 2: Tundra - Lavender */
@@ -47,7 +47,7 @@ static const SDL_Color vegetation_colors[12] = {
 };
 
 /* Nation owner colors (8 nations) */
-static const SDL_Color owner_colors[8] = {
+const SDL_Color owner_colors[8] = {
     {255,   0,   0, 255},   /* 0: Red */
     {  0,   0, 255, 255},   /* 1: Blue */
     {  0, 255,   0, 255},   /* 2: Green */
@@ -59,8 +59,8 @@ static const SDL_Color owner_colors[8] = {
 };
 
 /* Cursor highlight color */
-static const SDL_Color cursor_color = {255, 255, 0, 200};
-static const SDL_Color cursor_outline = {255, 200, 0, 255};
+const SDL_Color cursor_color = {255, 255, 0, 200};
+const SDL_Color cursor_outline = {255, 200, 0, 255};
 
 int hexmap_init(hexmap_context_t *ctx, int width, int height) {
     if (!ctx) return -1;

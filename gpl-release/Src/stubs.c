@@ -36,5 +36,7 @@ char *bind_func(int which) {
 }
 
 /* Variables needed by conqrun */
+#ifndef CONQUER_BUILD
 int nologouts = 0;
 int conquer_done = 0;
+#endif

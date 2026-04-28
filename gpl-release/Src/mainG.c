@@ -33,6 +33,9 @@
 #include "activeX.h"
 #include "hlightX.h"
 #include "displayG.h"
+#ifdef USE_SDL2
+#include "displayG_sdl2.h"
+#endif
 #include "patchlevel.h"
 
 /* indicator that player is not done yet */
@@ -138,9 +141,9 @@ main PARM_2 (int, argc, char **, argv)
 
   /* process the command line arguments */
 #ifndef FILELOCK
-  while ((i = getopt(argc, argv, "?BbcDMwGPhlpcn:d:s")) != EOF)
+  while ((i = getopt(argc, argv, "?BbcDMwGPhlpcn:d:sr:")) != EOF)
 #else
-  while ((i = getopt(argc, argv, "?BbDMwGPhlpcn:d:s")) != EOF)
+  while ((i = getopt(argc, argv, "?BbDMwGPhlpcn:d:sr:")) != EOF)
 #endif /* FILELOCK */
     switch (i) {
   case 'h':
@@ -243,6 +246,20 @@ main PARM_2 (int, argc, char **, argv)
     /* display the score */
     sflag++;
     break;
+  case 'r':
+    /* specify SDL2 window resolution WIDTHxHEIGHT (e.g., -r 1024x768) */
+    {
+        int w = 0, h = 0;
+        if (sscanf(optarg, "%dx%d", &w, &h) == 2) {
+            /* store globally for SDL2 init */
+            #ifdef USE_SDL2
+            sdl2_set_resolution(w, h);
+            #endif
+        } else {
+            fprintf(stderr, "Invalid resolution format: %s (expected WxH)\n", optarg);
+        }
+    }
+    break;
   case '?':
     /* display correct command line arguments */
     fprintf(stderr,
@@ -272,6 +289,7 @@ main PARM_2 (int, argc, char **, argv)
     fprintf(stderr, "\t-h       print help text\n");
     fprintf(stderr, "\t-P       print a map with highlighting\n");
     fprintf(stderr, "\t-p       print a map\n");
+    fprintf(stderr, "\t-r WxH   set SDL2 window resolution (e.g., 1024x768)\n");
     fprintf(stderr, "\t-s       print scores\n");
     fprintf(stderr, "\t-M       edit the MOTD, if allowed\n");
     fprintf(stderr, "\t-D       dump nation information\n");
@@ -639,8 +657,15 @@ main PARM_2 (int, argc, char **, argv)
     exit(SUCCESS);
   }
 
-  /* initialize curses display */
-  cq_init(argv[0]);
+#ifdef USE_SDL2
+    if (sdl2_display_init_with_opts(argv[0]) != 0) {
+        fprintf(stderr, "SDL2 init failed\n");
+        exit(FAIL);
+    }
+#else
+    /* initialize curses display */
+    cq_init(argv[0]);
+#endif
 
   /* display initial title screen -- end of setup done later */
   motd_display();

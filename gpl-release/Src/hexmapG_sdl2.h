@@ -121,4 +121,12 @@ SDL_Color hexmap_elevation_color(int elevation);
 SDL_Color hexmap_vegetation_color(int vegetation);
 SDL_Color hexmap_owner_color(int owner);
 
+/* Extern data tables (for sprite test / integration) */
+extern const zoom_config_t zoom_configs[ZOOM_LEVELS];
+extern const SDL_Color elevation_colors[6];
+extern const SDL_Color vegetation_colors[12];
+extern const SDL_Color owner_colors[8];
+extern const SDL_Color cursor_color;
+extern const SDL_Color cursor_outline;
+
 #endif /* HEXMAPG_SDL2_H */

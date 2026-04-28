@@ -95,6 +95,8 @@ Leaders have special classes and roles:
 - **AC_BALROG**: Balrog type
 - **AC_DRAGON**: Dragon type
 
+DESIGN NOTES (Ray): Lots of different idea for these rolling around in my head. Some of them might be a little hard, considering I haven't done sprite art in a while. The different types are also something to consider when it comes to some of my GAME PLAY CHANGES like Dungeons and Tasks/Quests, HEROS and GENERALS may find themselves facing off against other types like EFREETS and MUMMIES, and POWERS might come into play too depending on how they work. I saw in the PATCH28 notes that their were plans for NPCs and I find that VERY interesting, I'll have Emmi pull some of that from the code so I can try and figure out what the nre maintainer was up to with his own ideas and tweak them or expand on them in my own ways.
+
 ### Normal Units (27 types)
 - **AC_NORMAL**: Basic (Militia, Goblins, Orcs, Infantry, Sailors, Marines, Assault, Archers, Uruk-Hai, Ninjas, Longbowmen, Phalanx, Bow_Phalanx, Olog-Hai)
 
@@ -116,6 +118,10 @@ Leaders have special classes and roles:
 | Icon (large)  | 48×48         | Map tile (optional)           |
 | Checkbox      | 20×16         | Small toggle                  |
 | Tooltip       | 200×48        | Context help text             |
+
+DESIGN NOTE (Ray): I think that using larger notes for Map Tiles will afford me more room for more detailed Designations like Blacksmith, Church, University, etc. I'll create them in Inkscape as .SVG Images since they can be scaled easily. On that, I womnder if they can be used for the game, I know browswers can use them, and if I remeber right the gpl-release version could be played in a browser. I need to ask Emmi if that is even possible using SDL2. That would actually help a lot with my sprite designs too. Maybe I should step up to Adbode Illustrator if it is possible...that would make sprite design and detail higher as well.
+
+DESIGN NOTE (Ray): Once I play the original version of the gpl-release (using curses - if I still can, if not I figure it out) I'll have a better idea of how the Context Help and Dialog Boxes should look, otherwise I'll just play with sizes based on Emmi's suggestions until I find the one that "feels right". The others should be easier to work out.
 
 ### Suggested Button Text
 - **Draft**: "Draft", "Recruit", "Create"
@@ -144,6 +150,8 @@ Leaders have special classes and roles:
 - **Sectors**: 20 tiles (4 elevation × 5 vegetation, plus 4 cities, 4 minor designations, 2 borders)
 - **Units**: 10 units (4 leaders, 6 normals)
 - **UI**: 12 buttons (basic menu)
+
+DESIGN NOTE (Ray): Variations on the City sprites and ones like Shrines should reflect the Races that built them. Something to consider long term, but for testing I can just have a few differences to test things out. I'll ask Emmi about assign certain types for certain situations as wel go.
 
 ---
 

@@ -16,331 +16,138 @@
 #define DEFAULT_TITLE  "Conquer V5 (SDL2)"
 
 /* SDL2 Display Context */
-static sdl2_context_t ctx = {0};
+static sdl2_context_t sdl2_ctx = {0};
 
-/* Initialize SDL2 display context.
- * Returns 0 on success, -1 on failure.
- */
-int sdl2_init(sdl2_context_t *ctx, int width, int height, const char *title)
-{
-    int ret = 0;
-
-    if (!ctx) {
-        printf("SDL2_init: NULL context pointer\n");
-        return -1;
-    }
-
-    if (!title) {
-        title = DEFAULT_TITLE;
-    }
-
-    /* Initialize SDL2 */
-    if (SDL_Init(0 | 2 | 4) < 0) {
-        printf("SDL2_init: SDL_Init failed: %s\n", SDL_GetError());
-        return -1;
-    }
-
-    /* Create renderer with OpenGL ES 2.0 support */
-    ctx->renderer = SDL_CreateRenderer(
-        NULL, /* window (NULL = any window) */
-        0,    /* index (0 = first window) */
-        SDL_RENDERER_ACCELERATED |
-        SDL_RENDERER_PRESENTVSYNC |
-        SDL_RENDERER_SOFTFLOAT
-    );
-
-    if (!ctx->renderer) {
-        printf("SDL2_init: SDL_CreateRenderer failed: %s\n", SDL_GetError());
-        SDL_Quit();
-        return -1;
-    }
-
-    /* Get renderer surface and create window (if not provided) */
-    SDL_RendererInfo info;
-    SDL_GetRendererInfo(ctx->renderer, &info);
-
-    /* Set renderer output size (for OpenGL ES 2.0) */
-    SDL_RenderSetLogicalSize(ctx->renderer, width, height);
-    SDL_RenderSetViewportSize(ctx->renderer, width, height);
-    SDL_RenderClear(ctx->renderer);
-
-    /* Create window (optional, for debugging) */
-    ctx->window = SDL_CreateWindow(
-        title,
-        SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED,
-        width,
-        height,
-        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
-    );
-
-    if (!ctx->window) {
-        printf("SDL2_init: SDL_CreateWindow failed: %s\n", SDL_GetError());
-        SDL_DestroyRenderer(ctx->renderer);
-        SDL_Quit();
-        return -1;
-    }
-
-    ctx->screen_width = width;
-    ctx->screen_height = height;
-    ctx->is_initialized = 1;
-
-    /* Set renderer output size (for OpenGL ES 2.0) */
-    SDL_RenderSetLogicalSize(ctx->renderer, width, height);
-    SDL_RenderSetViewportSize(ctx->renderer, width, height);
-    SDL_RenderClear(ctx->renderer);
-
-    printf("SDL2_init: Successfully initialized at %dx%d\n", width, height);
-    printf("SDL2_init: Title: %s\n", title);
-
-    return ret;
+/* --- Helper: parse resolution from WxH string */
+static int parse_res(const char *s, int *w, int *h) {
+    if (sscanf(s, "%dx%d", w, h) == 2) return 1;
+    return 0;
 }
 
-/* Shutdown SDL2 display context.
- * Returns 0 on success, -1 on failure.
- */
-void sdl2_shutdown(sdl2_context_t *ctx)
-{
+/* --- Public API (matches the header) */
+int SDL2_display_init(sdl2_context_t *ctx, int width, int height, const char *title) {
     if (!ctx) {
-        printf("SDL2_shutdown: NULL context pointer\n");
-        return;
+        printf("SDL2_display_init: NULL context pointer\n");
+        return -1;
     }
 
-    if (ctx->is_initialized) {
-        printf("SDL2_shutdown: Cleaning up SDL2 resources...\n");
+    if (!title) title = DEFAULT_TITLE;
 
-        /* Clean up resources in reverse order of creation */
-        if (ctx->map_texture) {
-            SDL_DestroyTexture(ctx->map_texture);
-            ctx->map_texture = NULL;
-        }
-        if (ctx->units_texture) {
-            SDL_DestroyTexture(ctx->units_texture);
-            ctx->units_texture = NULL;
-        }
-        if (ctx->renderer) {
-            SDL_DestroyRenderer(ctx->renderer);
-            ctx->renderer = NULL;
-        }
-        if (ctx->window) {
-            SDL_DestroyWindow(ctx->window);
-            ctx->window = NULL;
-        }
-        if (ctx->font) {
-            TTF_CloseFont(ctx->font);
-            ctx->font = NULL;
-        }
-
-        printf("SDL2_shutdown: SDL2 resources cleaned up.\n");
+    /* Initialize SDL */
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        printf("SDL2_display_init: SDL_Init failed: %s\n", SDL_GetError());
+        return -1;
     }
+    /* Initialize SDL_ttf */
+    if (TTF_Init() < 0) {
+        printf("SDL2_display_init: TTF_Init failed: %s\n", TTF_GetError());
+        SDL_Quit();
+        return -1;
+    }
+
+    /* Create window */
+    ctx->window = SDL_CreateWindow(title,
+                                   SDL_WINDOWPOS_CENTERED,
+                                   SDL_WINDOWPOS_CENTERED,
+                                   width, height,
+                                   SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+    if (!ctx->window) {
+        printf("SDL2_display_init: SDL_CreateWindow failed: %s\n", SDL_GetError());
+        SDL_Quit();
+        return -1;
+    }
+
+    /* Create renderer */
+    ctx->renderer = SDL_CreateRenderer(ctx->window, -1,
+                                       SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (!ctx->renderer) {
+        printf("SDL2_display_init: SDL_CreateRenderer failed: %s\n", SDL_GetError());
+        SDL_DestroyWindow(ctx->window);
+        SDL_Quit();
+        return -1;
+    }
+
+    /* Default sizes */
+    ctx->screen_width  = width;
+    ctx->screen_height = height;
+    ctx->is_initialized = 1;
+    return 0;
+}
+
+void SDL2_display_shutdown(sdl2_context_t *ctx) {
+    if (!ctx) return;
+    if (!ctx->is_initialized) return;
+
+    if (ctx->map_texture) SDL_DestroyTexture(ctx->map_texture);
+    if (ctx->units_texture) SDL_DestroyTexture(ctx->units_texture);
+    if (ctx->ui_texture) SDL_DestroyTexture(ctx->ui_texture);
+    if (ctx->sector_texture) SDL_DestroyTexture(ctx->sector_texture);
+    if (ctx->unit_texture) SDL_DestroyTexture(ctx->unit_texture);
+    if (ctx->renderer) SDL_DestroyRenderer(ctx->renderer);
+    if (ctx->window) SDL_DestroyWindow(ctx->window);
+    if (ctx->font) TTF_CloseFont(ctx->font);
+
+    SDL_Quit();
     ctx->is_initialized = 0;
 }
 
-/* Load TTF font (stub implementation).
- * Returns 0 on success, -1 on failure.
- */
-int sdl2_load_font(sdl2_context_t *ctx, const char *font_path, int size)
-{
-    if (!ctx) {
-        printf("sdl2_load_font: NULL context pointer\n");
-        return -1;
-    }
-
-    if (!font_path) {
-        printf("sdl2_load_font: NULL font_path provided\n");
-        return -1;
-    }
-
-    ctx->font = TTF_OpenFont(font_path, size);
-
+int SDL2_display_load_font(sdl2_context_t *ctx, const char *path, int size) {
+    if (!ctx || !path) return -1;
+    ctx->font = TTF_OpenFont(path, size);
     if (!ctx->font) {
-        printf("sdl2_load_font: TTF_OpenFont failed: %s\n", TTF_GetError());
+        printf("SDL2_display_load_font: %s\n", TTF_GetError());
         return -1;
     }
-
-    printf("sdl2_load_font: Successfully loaded font: %s\n", font_path);
-
     return 0;
 }
 
-/* Render map (stub implementation).
- * Simple colored rectangle for now.
- * Returns 0 on success, -1 on failure.
- */
-int sdl2_render_map(sdl2_context_t *ctx, int xoffset, int yoffset)
-{
-    if (!ctx) {
-        printf("sdl2_render_map: NULL context pointer\n");
-        return -1;
-    }
-
-    if (!ctx->is_initialized) {
-        printf("sdl2_render_map: Not initialized\n");
-        return -1;
-    }
-
-    printf("sdl2_render_map: Rendering map at %dx%d offset (%d, %d)\n",
-           ctx->screen_width, ctx->screen_height, xoffset, yoffset);
-
-    /* TODO: Replace with actual texture-based rendering */
-    SDL_Rect fillRect = {
-        0, 0, ctx->screen_width, ctx->screen_height
-    };
-    SDL_SetRenderDrawColor(ctx->renderer, 0, 255, 0, 255); /* Green */
-    SDL_RenderFillRect(ctx->renderer, &fillRect);
-
+int SDL2_display_render_map(sdl2_context_t *ctx, int xoffset, int yoffset) {
+    if (!ctx || !ctx->is_initialized) return -1;
+    /* Clear to green background */
+    SDL_SetRenderDrawColor(ctx->renderer, 0, 100, 0, 255);
+    SDL_Rect rect = {0, 0, ctx->screen_width, ctx->screen_height};
+    SDL_RenderFillRect(ctx->renderer, &rect);
     return 0;
 }
 
-/* Render sector (stub implementation).
- * Simple colored rectangle for now.
- * Returns 0 on success, -1 on failure.
- */
-int sdl2_render_sector(sdl2_context_t *ctx, int x, int y, int sector_type)
-{
-    if (!ctx) {
-        printf("sdl2_render_sector: NULL context pointer\n");
-        return -1;
-    }
-
-    if (!ctx->is_initialized) {
-        printf("sdl2_render_sector: Not initialized\n");
-        return -1;
-    }
-
-    printf("sdl2_render_sector: Rendering sector at (%d, %d), type: %d\n",
-           x, y, sector_type);
-
-    /* TODO: Replace with actual texture-based rendering */
-    SDL_Rect fillRect = {
-        x, y, 100, 100
-    };
-    SDL_SetRenderDrawColor(ctx->renderer, 255, 255, 0, 255); /* Yellow */
-    SDL_RenderFillRect(ctx->renderer, &fillRect);
-
+int SDL2_display_render_sector(sdl2_context_t *ctx, int x, int y, int sector_type) {
+    if (!ctx || !ctx->is_initialized) return -1;
+    /* Stub: yellow square for sector */
+    SDL_Rect r = {x * 32, y * 32, 30, 30};
+    SDL_SetRenderDrawColor(ctx->renderer, 255, 255, 0, 255);
+    SDL_RenderFillRect(ctx->renderer, &r);
     return 0;
 }
 
-/* Render unit (stub implementation).
- * Simple colored rectangle for now.
- * Returns 0 on success, -1 on failure.
- */
-int sdl2_render_unit(sdl2_context_t *ctx, int x, int y, int unit_type)
-{
-    if (!ctx) {
-        printf("sdl2_render_unit: NULL context pointer\n");
-        return -1;
-    }
-
-    if (!ctx->is_initialized) {
-        printf("sdl2_render_unit: Not initialized\n");
-        return -1;
-    }
-
-    printf("sdl2_render_unit: Rendering unit at (%d, %d), type: %d\n",
-           x, y, unit_type);
-
-    /* TODO: Replace with actual texture-based rendering */
-    SDL_Rect fillRect = {
-        x, y, 20, 20
-    };
-    SDL_SetRenderDrawColor(ctx->renderer, 0, 0, 255, 255); /* Blue */
-    SDL_RenderFillRect(ctx->renderer, &fillRect);
-
+int SDL2_display_render_unit(sdl2_context_t *ctx, int x, int y, int unit_type) {
+    if (!ctx || !ctx->is_initialized) return -1;
+    /* Stub: blue square for unit */
+    SDL_Rect r = {x * 32 + 8, y * 32 + 8, 16, 16};
+    SDL_SetRenderDrawColor(ctx->renderer, 0, 100, 255, 255);
+    SDL_RenderFillRect(ctx->renderer, &r);
     return 0;
 }
 
-/* Render text (stub implementation).
- * Simple colored rectangle with text.
- * Returns 0 on success, -1 on failure.
- */
-int sdl2_render_text(sdl2_context_t *ctx, int x, int y, const char *text, SDL_Color color)
-{
-    if (!ctx) {
-        printf("sdl2_render_text: NULL context pointer\n");
-        return -1;
-    }
-
-    if (!ctx->is_initialized) {
-        printf("sdl2_render_text: Not initialized\n");
-        return -1;
-    }
-
-    printf("sdl2_render_text: Rendering text '%s' at (%d, %d), color: %d, %d, %d, %d\n",
-           text ? text : "(null)", x, y, color.r, color.g, color.b, color.a);
-
-    /* TODO: Replace with actual TTF_RenderText_Solid call */
-    SDL_SetRenderDrawColor(ctx->renderer, color.r, color.g, color.b, color.a);
-    SDL_Rect textRect = {
-        x, y, 100, 20
-    };
-    SDL_RenderFillRect(ctx->renderer, &textRect);
-
+int SDL2_display_render_text(sdl2_context_t *ctx, int x, int y, const char *text, SDL_Color color) {
+    if (!ctx || !ctx->is_initialized || !text) return -1;
+    /* Stub: no font rendering yet, just log */
+    printf("SDL2_display_render_text: (%d,%d) %s\n", x, y, text);
     return 0;
 }
 
-/* Present (swap buffers).
- * Returns 0 on success, -1 on failure.
- */
-int sdl2_present(sdl2_context_t *ctx)
-{
-    if (!ctx) {
-        printf("sdl2_present: NULL context pointer\n");
-        return -1;
-    }
-
-    if (!ctx->is_initialized) {
-        printf("sdl2_present: Not initialized\n");
-        return -1;
-    }
-
+int SDL2_display_present(sdl2_context_t *ctx) {
+    if (!ctx || !ctx->is_initialized) return -1;
     SDL_RenderPresent(ctx->renderer);
-    printf("sdl2_present: Buffer swapped.\n");
-
     return 0;
 }
 
-/* Handle events (key/quit).
- * Returns 0 on success, -1 on failure.
- * Sets *quit = 1 if user presses Escape or closes window.
- */
-int sdl2_handle_events(sdl2_context_t *ctx, int *quit)
-{
-    if (!ctx) {
-        printf("sdl2_handle_events: NULL context pointer\n");
-        return -1;
-    }
-
-    if (!ctx->is_initialized) {
-        printf("sdl2_handle_events: Not initialized\n");
-        return -1;
-    }
-
-    if (!quit) {
-        printf("sdl2_handle_events: NULL quit pointer\n");
-        return -1;
-    }
-
+int SDL2_display_handle_events(sdl2_context_t *ctx, int *quit) {
+    if (!ctx || !ctx->is_initialized || !quit) return -1;
+    SDL_Event e;
     *quit = 0;
-
-    /* Handle SDL2 events */
-    while (SDL_PollEvent(&ctx->window) > 0) {
-        SDL_Event event;
-        if (SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) > 0) {
-            if (event.type == SDL_QUIT) {
-                *quit = 1;
-                printf("sdl2_handle_events: Window closed\n");
-                break;
-            }
-            if (event.type == SDL_KEYDOWN) {
-                if (event.key.keysym.sym == SDLK_ESCAPE) {
-                    *quit = 1;
-                    printf("sdl2_handle_events: Escape pressed\n");
-                    break;
-                }
-            }
-        }
+    while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT) *quit = 1;
+        if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE) *quit = 1;
     }
-
     return 0;
 }
