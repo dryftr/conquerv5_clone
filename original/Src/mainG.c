@@ -128,89 +128,12 @@ main PARM_2 (int, argc, char **, argv)
 #endif /* VAXC */
 
   /* process the command line arguments */
-  /* Modernized argument parsing without getopt() */
-  int opt_index = 1;
-  while (opt_index < argc) {
-    char *arg = argv[opt_index];
-    
-    /* Single character options */
-    if (arg[0] == '-' && arg[1] != '\0' && arg[2] == '\0') {
-      switch (arg[1]) {
-        case 'h':  /* help */
-          if (chdir(helpdir) != 0) {
-            perror("conquer");
-            exit(1);
-          }
-          /* cq_init() removed - modernized without curses dependency */
-          sprintf(nationname, "hlp%04ld", rand_val(10000));
-          signal(SIGINT, SIG_IGN);
-          signal(SIGQUIT, SIG_IGN);
-          do {
-            if ((i = do_help()) == FALSE) {
-              clear();
-            }
-          } while (i == FALSE);
-          cq_reset();
-          exit(SUCCESS);
-          break;
-        case 'B':  /* battle mode */
-          battle_mode = TRUE;
-          break;
-        case 'b':  /* brief mode */
-          brief_mode = TRUE;
-          break;
-        case 'c':  /* clear lock */
-          clear_lock = TRUE;
-          break;
-        case 'D':  /* dump nation info */
-          dump_nations = TRUE;
-          break;
-        case 'd':  /* directory */
-          if (++opt_index < argc) {
-            strcpy(data_dir, argv[opt_index]);
-          }
-          break;
-        case 'G':  /* game only */
-          game_only = TRUE;
-          break;
-        case 'l':  /* list nations */
-          list_nations_flag = TRUE;
-          break;
-        case 'M':  /* multiplayer */
-          multiplayer_mode = TRUE;
-          break;
-        case 'n':  /* nation name */
-          if (++opt_index < argc) {
-            strcpy(nationname, argv[opt_index]);
-          }
-          break;
-        case 'p':  /* password */
-          if (++opt_index < argc) {
-            strcpy(password, argv[opt_index]);
-          }
-          break;
-        case 's':  /* server mode */
-          server_mode = TRUE;
-          break;
-        case '?':  /* unknown option */
-        default:
-          fprintf(stderr, "Unknown option: -%c\n", arg[1]);
-          break;
-      }
-    } else if (strncmp(arg, "-nc", 3) == 0) {
-      /* -nc: no cursor mode */
-      no_cursor = TRUE;
-    } else if (strncmp(arg, "-n", 2) == 0 && arg[2] == 'n') {
-      /* -nNAT: network address */
-      if (opt_index + 1 < argc) {
-        strcpy(network_addr, argv[++opt_index]);
-      }
-    } else {
-      /* Not an option, stop parsing */
-      break;
-    }
-    opt_index++;
-  }
+#ifndef FILELOCK
+  while ((i = getopt(argc, argv, "?BbcDMwGPhlpcn:d:s")) != EOF)
+#else
+  while ((i = getopt(argc, argv, "?BbDMwGPhlpcn:d:s")) != EOF)
+#endif /* FILELOCK */
+    switch (i) {
   case 'h':
     /* first go to the help directory */
     if (chdir(helpdir) != 0) {
@@ -314,18 +237,15 @@ main PARM_2 (int, argc, char **, argv)
   case '?':
     /* display correct command line arguments */
     fprintf(stderr,
-	    "Command line format: %s [-nc] [--help] [--clear-lock] [--dump-nations] [--no-cursor] [-d DIR] [-n NAT] [-p PASS] [-m] [-s]\n",
+#ifndef FILELOCK
+	    "Command line format: %s [-nc] [-BbceGHhilMpsw -d DIR -nNAT]\n",
+#else
+	    "Command line format: %s [-nc] [-BbeGHhilMpsw -d DIR -nNAT]\n",
+#endif /* FILELOCK */
 	    argv[0]);
-    fprintf(stderr, "\t-nc              do not read in %s file [first option only]\n",
+    fprintf(stderr, "\t-nc      do not read in %s file [first option only]\n",
 	    CONQRC_FILE);
-    fprintf(stderr, "\t-n NAT           play as nation NAT\n");
-    fprintf(stderr, "\t--help           display this help message\n");
-    fprintf(stderr, "\t--clear-lock     clear lock for given nation\n");
-    fprintf(stderr, "\t--dump-nations   dump nation information\n");
-    fprintf(stderr, "\t--no-cursor      run without cursor\n");
-    fprintf(stderr, "\t-p PASS          password for nation\n");
-    fprintf(stderr, "\t-m               multiplayer mode\n");
-    fprintf(stderr, "\t-s               server mode\n");
+    fprintf(stderr, "\t-n NAT   play as nation NAT\n");
     fprintf(stderr, "\t-d DIR   use to access different campaign\n");
 #ifndef FILELOCK
     fprintf(stderr, "\t-c       clear lock for given nation, if allowed\n");
