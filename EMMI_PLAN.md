@@ -88,7 +88,8 @@ Modernization of the Conquer V5 classic strategy game, focusing on networking, g
 **5a: Sprite Art Creation**
 - Ray is designing the art style and creating real sprite PNGs
 - Replace 25 placeholder sprites with actual art
-- 32×32 base size, pointy-top hexes (corners get clipped by engine)
+- 64×64 base size (was 32×32, upgraded for better detail at close zoom)
+- Pointy-top hexes (corners get clipped by engine)
 - Keep important detail centered, pad edges for hex mask
 - Organized in `sprites/{terrain/elevation/, terrain/vegetation/, units/, navy/, buildings/, ui/}`
 - Animation via horizontal sprite strips configured in `sprites.json`
@@ -97,8 +98,17 @@ Modernization of the Conquer V5 classic strategy game, focusing on networking, g
 **5b: Sprite Integration into Game Rendering**
 - Replace hex color fills in `hexmapG_sdl2.c` with sprite rendering calls
 - Wire `sprite_loader` into the main game display loop
+- Layered compositing — render order per hex (bottom to top):
+  1. Terrain/elevation (centered)
+  2. Vegetation overlay (centered, alpha-blended over terrain)
+  3. Designation/building (slight upper offset: 0, -4)
+  4. Ground units (lower-left offset: -6, +6)
+  5. Air/flying units (upper-right offset: +6, -6)
+  6. UI/cursor (centered)
+- Offsets applied at render time, not in the art — modders draw full-frame sprites
+- Offsets scale proportionally with zoom, or disable at smallest zoom (16px)
 - Unit sprites (111 army types + 4 navy classes)
-- Building/desigation sprites (15 major + 13 minor designations)
+- Building/designation sprites (15 major + 13 minor designations)
 - UI sprites (cursor, selection, etc.)
 - Ensure fallback behavior remains for any missing sprites
 
