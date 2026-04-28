@@ -1,19 +1,10 @@
 # Network System Modernization Notes
 
-## File-Based Locking to In-Memory Locking Migration
+## Completed: File-Based Locking → In-Memory Locking
 
-### Current Implementation Issues:
-1. **File-Based Locking**: Uses `lockf()`/`flock()` on actual files
-2. **Performance Overhead**: Disk I/O for every lock operation
-3. **Scalability Issues**: Limited to single machine operation
-4. **Cleanup Complexity**: Requires manual lock file removal
+### Implementation Details
 
-### Modernization Strategy:
-Replace file-based locking with in-memory structures that can later be extended to socket-based networking.
-
-## Implementation Details
-
-### 1. New Lock Structure
+#### MEMORY_LOCK Structure
 ```c
 typedef struct {
     int is_locked;
@@ -23,41 +14,82 @@ typedef struct {
 } MEMORY_LOCK;
 ```
 
-### 2. Lock Operations
-- `memory_lock_acquire(slot, nation)` - Acquire lock for a slot
-- `memory_lock_release(slot, nation)` - Release lock
-- `memory_lock_check(slot, nation)` - Check if lock is held
+#### Lock Operations
+- `memory_lock_acquire(slot, nation)` — Acquire lock for a slot
+- `memory_lock_release(slot)` — Release lock
+- `memory_lock_check(slot, nation)` — Check if lock is held
 
-### 3. Slot Mapping
+#### Slot Mapping
 - Slot 0: Player transfer operations
 - Slot 1: Army transfer operations
 - Slot 2: Navy/CVN transfer operations
 
-### 4. Benefits
-- **No Disk I/O**: All operations in memory
-- **Thread-Safe Ready**: Structure supports synchronization primitives
-- **Extensible**: Easy to add network layer later
-- **Better Performance**: Eliminates file system bottlenecks
+#### Benefits Achieved
+- ✅ No disk I/O — all operations in memory
+- ✅ Thread-safe ready — structure supports synchronization primitives
+- ✅ Extensible — network layer added in Phase 2
+- ✅ Better performance — eliminates file system bottlenecks
 
-## Transition Plan
+## Completed: Socket Layer (Phase 2)
 
-### Phase 1: In-Memory Locks (Current)
-- Replace file operations with memory structures
-- Maintain same API for compatibility
-- Test with existing code
+### TCP/UDP Abstraction (`sockets.h/c`)
+- `socket_create()` — Create TCP or UDP socket
+- `socket_destroy()` — Clean up socket
+- `socket_send()` / `socket_recv()` — Send/receive data
+- `socket_set_nonblocking()` — Non-blocking mode
+- `socket_wait_ready()` — Polling with timeout
 
-### Phase 2: Socket Layer (Future)
-- Add network communication layer
-- Implement lock server/client model
-- Support distributed operations
+### Packet Serialization (`packets.h/c`)
+- Fixed header: type, length, checksum, sequence number
+- Variable payload up to MAX_MSG_SIZE
+- `packet_serialize()` / `packet_deserialize()`
+- `packet_checksum()` — integrity verification
 
-### Phase 3: Full Networking
-- TCP/UDP communication
-- State synchronization
-- Error handling and recovery
+### Encryption Framework (`encrypt.h/c`)
+- Types: ENCRYPT_NONE, ENCRYPT_TLS, ENCRYPT_DTLS
+- `encrypt_init()`, `encrypt_data()`, `decrypt_data()`
+- `encrypt_packet()`, `decrypt_packet()` — packet-level encryption
+- Current: XOR placeholder; TLS/DTLS ready for real implementation
 
-## API Compatibility
-All new functions follow same parameter patterns as original:
-- `PARM_2(int, slot, char *, nation)`
-- `PARM_1(int, slot)`
-- Return values match original (-1 on error, 0 on success)
+### Integration (`xferG.c`)
+- `xfer_net_init()` — Initialize networking
+- `send_lock_state()`, `recv_lock_state()` — Network lock sync
+- `send_encrypted_packet()`, `recv_encrypted_packet()` — Secure comms
+
+## Completed: Multiplayer Protocol (Phase 3)
+
+### Protocol Types (`multiplayer.h`)
+- TURN_START, TURN_END — Turn management
+- MOVE, ATTACK — Unit actions
+- CHAT — Player communication
+- JOIN, LEAVE — Player lifecycle
+
+### Key Functions
+- `mp_init()`, `mp_join_game()`, `mp_leave_game()`
+- `mp_start_turn()`, `mp_end_turn()`
+- `mp_send_move()`, `mp_send_attack()`, `mp_send_chat()`
+- `mp_check_players()`, `mp_process_packets()`
+
+### Player Context
+- Up to 8 players (MAXNTN)
+- Turn-based synchronization
+- Heartbeat monitoring
+
+## Integration Notes
+
+All networking layers stack cleanly:
+```
+Application (game logic)
+    ↓
+Multiplayer Protocol (multiplayer.h/c)
+    ↓
+Encryption Layer (encrypt.h/c)
+    ↓
+Packet Serialization (packets.h/c)
+    ↓
+Socket Layer (sockets.h/c)
+    ↓
+POSIX Sockets (TCP/UDP)
+```
+
+Each layer is independent and swappable. The XOR encryption can be replaced with a real TLS implementation without touching any other layer.

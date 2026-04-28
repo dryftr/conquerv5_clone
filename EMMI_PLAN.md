@@ -1,234 +1,126 @@
-# EMMI_CODE_ANALYSIS_PLAN
+# EMMI_MODERNIZATION_PLAN
 # Conquer V5 Codebase Modernization Plan
 
 ## EXECUTIVE_SUMMARY
-Comprehensive analysis of the Conquer V5 classic strategy game codebase for core networking and rendering loop modernization.
+Modernization of the Conquer V5 classic strategy game, focusing on networking, graphics, and build infrastructure. All work done on the GPL-licensed version (`gpl-release/`). The `original/` folder is preserved as pristine historical reference and should never be modified.
 
-## CORE_ARCHITECTURE
+## COMPLETED PHASES
 
-### Primary Application Files Structure
-- `/original/Src/` - Main game source code
-- `/original/Auxil/` - Auxiliary programs (conqsort, psmap, cextract)
-- `/original/Include/` - Header files
-- `/original/Docs/` - Documentation build files
+### Phase 1: Command-Line Parsing & In-Memory Locking ✅
+**Commit:** `c7b3efe`
+- Replaced deprecated `getopt()` with modern argument parsing in `mainG.c`
+- Added long options: `--help`, `--clear-lock`, `--dump-nations`, `--no-cursor`
+- Built in-memory lock structure (`MEMORY_LOCK`) in `xferG.c`
+- Implemented `memory_lock_acquire()`, `memory_lock_release()`, `memory_lock_check()`
+- Created working build system (Makefiles + stubs.c)
 
-### Key Executables
-- `conquer` - Main game executable (mainG.c + displayG.c)
-- `conqrun` - Administrative program
+### Phase 2: Networking Stack ✅
+**Commits:** `9fd661b` (sockets), `1991d41` (packets), `1ae7a1e` (encryption)
+- **TCP/UDP Socket Layer** (`sockets.h/c`): Full POSIX socket support, `socket_create()`, `socket_send()`, `socket_recv()`
+- **Packet Serialization** (`packets.h/c`): Header/payload structure, checksums, serialization
+- **Encryption Layer** (`encrypt.h/c`): XOR placeholder framework (NONE/TLS/DTLS types), `encrypt_packet()`, `decrypt_packet()`
+- Integrated into `xferG.c` with `xfer_net_init()`, `send_lock_state()`, `recv_lock_state()`
 
-## CORE_NETWORKING_LOOPS
+### Phase 3: Multiplayer Protocol ✅
+**Commit:** `276211c`
+- Protocol types: TURN_START, TURN_END, MOVE, ATTACK, CHAT, JOIN, LEAVE
+- Player management: `mp_init()`, `mp_join_game()`, `mp_leave_game()`
+- Turn management: `mp_start_turn()`, `mp_end_turn()`
+- Action messages: `mp_send_move()`, `mp_send_attack()`, `mp_send_chat()`
+- Integrated with Phase 2 (sockets + packets + encryption)
 
-### 1. MAIN_GAME_LOOP (mainG.c:150, 731)
-**Location**: `original/Src/mainG.c`
-**Critical Loops**:
-```c
-while ((i = getopt(argc, argv, "?BbcDMwGPhlpcn:d:s")) != EOF)  // Command line parsing
-while (!feof(fexe))                                          // Executable checking
-while (conquer_done == FALSE)                                // Main game loop
-```
+### Phase 4: Graphics Modernization ✅ (4a-4d)
+**4a: SDL2 Display Backend** — Commit `421558e`
+- `displayG_sdl2.h/c` — curses-like API wrapper over SDL2
+- Conditional compilation via `USE_SDL2` flag
+- `-r WxH` resolution flag in `mainG.c`
 
-**MODERNIZATION_NEEDED**:
-- Replace getopt() with modern argument parsing (argparse alternatives)
-- Replace feof() with proper file status checking
-- Main game loop uses busy-wait pattern (conquer_done flag)
+**4b: SDL2 Display Backend (Original)** — Commit `801b6d9`
+- SDL2 display for original version (since reverted from original/)
 
-### 2. INPUT_HANDLING (mainG.c:85, 132-155)
-**Command Line Options**:
-- `-nc` - No cursor
-- `-Bb` - Battle mode
-- `-c` - Clear lock
-- `-d DIR` - Directory specification
-- `-nNAT` - Network address
+**4c: Hex Map Rendering** — Commit `57eede1`
+- `hexmapG_sdl2.h/c` — Hardware-accelerated hexagonal tile rendering
+- 4 zoom levels (16px to 48px)
+- 4 display modes: Terrain, Elevation, Vegetation, Ownership
+- Odd-r offset coordinate system
+- Cursor highlighting with crosshair
 
-## CORE_RENDERING_LOOPS
+**4d: Sprite Loader System** — *Local only, not yet committed*
+- `sprite_loader.h/c` — PNG sprite loading with hash table lookup
+- Organized directory: `sprites/terrain/`, `units/`, `navy/`, `buildings/`, `ui/`
+- Optional `sprites.json` manifest for animation configs
+- Fallback colored rectangles for missing sprites
+- Hex-clipped rendering, animated sprite strips
+- SDL2_image integration
 
-### 1. MAP_RENDERING_LOOP (displayG.c:350, 529)
-**Location**: `original/Src/displayG.c`
-**Critical Loops**:
-```c
-while (done == FALSE)                                          // Main rendering loop
-    for (x = 0; x < xmax; x++)                                // Horizontal scan
-        for (y = 0; y < ymax; y++)                            // Vertical scan
-            show_sect(x + xoffset, y + yoffset, ...)          // Sector rendering
-```
+### Housekeeping ✅
+**Commit `d585a7b`:** Restored `original/` to pristine import state
+**Commit `b110495`:** Built in-game help docs (16 .doc files from nroff sources), exposed hex map data tables as extern
 
-**MODERNIZATION_NEEDED**:
-- Replace double-buffered rendering with modern graphics API (SDL2, OpenGL, or Vulkan)
-- Sector-by-sector rendering is inefficient for modern hardware
-- Coordinate system uses outdated xoffset/yoffset approach
+## CURRENT STATE
 
-### 2. HEX_MAP_RENDERING (hexmapG.c:873-974)
-**Complex Rendering Structure**:
-```c
-for (count = 0; count < DMODE_NUMBER; count++)                 // Display modes
-    for (count2 = 0; count2 < HXPOS_NUMBER; count2++)          // Hex positions
-        // Sector rendering with army/navy/city overlays
-for (army_tptr = ntn_tptr->army_list; army_tptr != NULL; army_tptr = army_tptr->next)
-for (navy_tptr = ntn_tptr->navy_list; navy_tptr != NULL; navy_tptr = navy_tptr->next)
-```
+### Build System
+- Makefile-based, compiles with warnings (format issues, unused variables)
+- Stubs: `stubs.c` for missing functions (`hangup`, `tmp_parsep`, etc.)
+- Defines: `DEFAULTDIR`, `EXEDIR`, `CONQ_SORT` set in Makefiles
+- SDL2 build: `make sdl2`, `make test-hexmap`, `make test-sprites`
+- Docs build: `nroff roff-mac.nr <file>.nr | ./ezconv > <file>.doc`
 
-**MODERNIZATION_NEEDED**:
-- Replace linked list traversal with direct array access
-- Modern hex rendering should use texture atlases
-- Implement proper z-ordering for units
+### What Works
+- Game compiles and runs (curses mode)
+- SDL2 display and hex map renderer functional
+- Sprite loader loads PNGs, falls back gracefully, hot-reloads on R key
+- In-game help system now works (all 16 help docs generated)
+- All networking layers present (sockets, packets, encryption, multiplayer)
+- `original/` folder is pristine (no modifications)
 
-### 3. ENTITY_RENDERING (displayG.c:221-478)
-**Rendering Functions**:
-- `makemap()` - Full map redraw every frame
-- `show_sect()` - Individual sector rendering
-- `show_cursor()` - Cursor management
-- `show_unit()` - Unit display
+### Repository Structure
+- **Public repo** (`conquerv5_clone`): Modernization infrastructure (Phases 1-4c, docs)
+- **Private repo** (`conquer_rebirth`): Ray's personal fork for game mechanic changes and art
+- **Sprite system**: Local only, repo assignment TBD by Ray
 
-**PERFORMANCE_ISSUES**:
-- Full map redraw every frame (O(width × height) complexity)
-- No dirty rectangle optimization
-- No hardware acceleration
+## FUTURE CONSIDERATIONS
 
-## NETWORKING_SYSTEM
+### Potential Phase 5: SVG Support
+- SVG sprites shelved as "maybe later"
+- Would require nanosvg or resvg dependency
+- Re-rasterization cost is problematic for animation
+- Architecture supports it: sprite loader returns `SDL_Texture*`, format is the loader's business
 
-### 1. TURN_BASED_PROTOCOL (xferG.c:1988)
-**Network Loop**:
-```c
-while (xfer_done == FALSE)                                     // Transfer loop
-    // Network I/O and state synchronization
-```
+### Game Mechanic Changes
+- Ray has bigger change ideas — will go in private repo
+- Current game is playtestable, Ray is actively testing
 
-**MODERNIZATION_NEEDED**:
-- Replace with TCP/UDP socket API
-- Implement proper packet serialization
-- Add error handling and retry logic
-- Support for modern network topologies
+### Sprite Art
+- 25 placeholder PNGs currently in place (solid color gradients)
+- Real art design is Ray's next step
+- Sprite system is ready for custom assets
 
-### 2. MULTIPLAYER_COORDINATION (mainG.c:85-561)
-**Player Management**:
-- Nation selection (MAXNTN = 8 nations)
-- Password-based authentication
-- Turn-based synchronization
-- File locking mechanism
+## KEY FILES
 
-**CURRENT_LIMITATIONS**:
-- No encryption
-- No compression
-- No latency compensation
-- Synchronous turn system only
+| File | Purpose |
+|------|---------|
+| `gpl-release/Src/mainG.c` | Main game entry point |
+| `gpl-release/Src/displayG.c` | Curses display (original) |
+| `gpl-release/Src/displayG_sdl2.h/c` | SDL2 display wrapper |
+| `gpl-release/Src/sdl2_display.h/c` | SDL2 context management |
+| `gpl-release/Src/hexmapG_sdl2.h/c` | Hex map renderer |
+| `gpl-release/Src/sprite_loader.h/c` | Sprite loading system |
+| `gpl-release/Src/sockets.h/c` | TCP/UDP socket layer |
+| `gpl-release/Src/packets.h/c` | Packet serialization |
+| `gpl-release/Src/encrypt.h/c` | Encryption framework |
+| `gpl-release/Src/multiplayer.h/c` | Multiplayer protocol |
+| `gpl-release/Docs/` | nroff source + built .doc files |
+| `gpl-release/sprites/` | Sprite assets directory |
 
-## MODERNIZATION_REQUIREMENTS
+## RISK_ASSESSMENT
 
-### GRAPHICS_MODERNIZATION
-1. **Replace curses/ncurses with SDL2 or SDL2_gfx**
-   - Hardware acceleration
-   - Better image handling
-   - Cross-platform compatibility
+### Resolved Risks
+- ✅ Original code preservation — `original/` reverted and locked down
+- ✅ SDL2 integration — working with hardware acceleration
+- ✅ Sprite fallback — game never crashes from missing assets
 
-2. **Implement double/triple buffering**
-   - Eliminate screen tearing
-   - Smooth animations
-   - VSync support
-
-3. **Texture-based rendering**
-   - Pre-load all game assets
-   - Sprite batching for performance
-   - Proper mipmapping
-
-### NETWORKING_MODERNIZATION
-1. **TCP/UDP Socket Layer**
-   - Replace file-locking with network sockets
-   - Implement proper network protocol
-   - Add heartbeat mechanism
-
-2. **State Synchronization**
-   - Delta compression for game state
-   - Prediction and reconciliation
-   - Lag compensation
-
-3. **Security Layer**
-   - TLS/SSL encryption
-   - Anti-cheat measures
-   - Authentication system
-
-### ARCHITECTURAL_REFINEMENTS
-1. **Entity Component System (ECS)**
-   - Decouple rendering from game logic
-   - Better memory locality
-   - Easier parallelization
-
-2. **Memory Management**
-   - Replace static arrays with dynamic allocation
-   - Implement proper memory pools
-   - Reduce memory fragmentation
-
-3. **Input System**
-   - Modern keyboard/mouse/gamepad support
-   - Input buffering
-   - Configurable keybindings
-
-## PERFORMANCE_BENCHMARKS
-
-### CURRENT_PERFORMANCE
-- Map rendering: O(n²) where n = map dimensions
-- Entity updates: O(n) linked list traversal
-- Network latency: High (file-based synchronization)
-- Memory usage: High (static allocations)
-
-### TARGET_PERFORMANCE
-- Map rendering: O(n) with dirty rectangles
-- Entity updates: O(1) with ECS
-- Network latency: <100ms round-trip
-- Memory usage: 50% reduction
-
-## IMPLEMENTATION_ROADMAP
-
-### PHASE_1:_FOUNDATION (2-3 weeks)
-1. Set up modern build system (CMake)
-2. Implement SDL2 graphics layer
-3. Create network abstraction layer
-4. Refactor entity management
-
-### PHASE_2:_GRAPHICS (3-4 weeks)
-1. Implement double buffering
-2. Add texture loading system
-3. Optimize rendering pipeline
-4. Implement camera system
-
-### PHASE_3_NETWORKING (3-4 weeks)
-1. TCP/UDP socket implementation
-2. Game state synchronization
-3. Multiplayer protocol
-4. Security layer
-
-### PHASE_4_OPTIMIZATION (2-3 weeks)
-1. Performance profiling
-2. Memory optimization
-3. Input system overhaul
-4. Bug fixing
-
-##_RISK_ASSESSMENT
-
-###_HIGH_RISK
-- Complete graphics rewrite may introduce bugs
-- Network protocol changes may break compatibility
-- Performance optimization requires deep understanding
-
-###_MEDIUM_RISK
-- Entity system refactoring
-- Memory management changes
-
-###_LOW_RISK
-- Build system updates
-- Documentation improvements
-
-##_SUCCESS_METRICS
-- Game runs at 60 FPS minimum
-- Network latency <100ms
-- Memory usage reduced by 50%
-- All original functionality preserved
-- Cross-platform compatibility (Windows, Linux, macOS)
-
-##_DEPENDENCIES
-- SDL2 library (graphics, audio, input)
-- CMake (build system)
-- Modern C++ compiler (C++17 or later)
-- Git (version control)
-
-##CONCLUSION
-The Conquer V5 codebase requires comprehensive modernization of both rendering and networking systems. The current implementation uses 1990s-era techniques that are inefficient by modern standards. The proposed modernization will improve performance by 10-100x while adding support for modern platforms and networking capabilities.
+### Remaining Risks
+- Build warnings (format strings, unused variables) — low priority
+- Encryption is XOR placeholder — needs real TLS for production
+- No automated tests — manual playtesting only
