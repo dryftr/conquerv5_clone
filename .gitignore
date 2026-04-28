@@ -1,49 +1,37 @@
-# Build artifacts and packages
-packages/
-*.apk
-*.deb
-*.tar.gz
-*.changes
-*.rpm
-*.pkg
+# Object files
+*.o
+*.obj
 
-# Melange build files  
-melange.rsa
-melange.rsa.pub
+# Executables
+conquer
+conqrun
+conqsort
+cextract
+psmap
+test_sdl2
+test_hexmap
+main_sdl2_original
 
-# Debian build artifacts
-debian/files
-debian/.debhelper/
-debian/conquerv5/
-debian/conquerv5.substvars
-debian/conquerv5.debhelper.log
+# Data files
+*.exc
+*.lck
+news.*
+god.*
 
-# Temporary build directories
-build/
-dist/
-.build/
-**/build/
-**/dist/
+# Build artifacts
+*.a
+*.so
+*.dll
 
 # Editor files
 *~
 *.swp
 *.swo
-.*.swp
-.*.swo
-*.bak
-*.tmp
+*.orig
 
-# OS generated files  
+# OS files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
-# IDE files
-.vscode/
-.idea/
-*.code-workspace
+# Data archives
+Data.Z
