@@ -45,7 +45,7 @@ Modernization of the Conquer V5 classic strategy game, focusing on networking, g
 - Odd-r offset coordinate system
 - Cursor highlighting with crosshair
 
-**4d: Sprite Loader System** — *Local only, not yet committed*
+**4d: Sprite Loader System** — Committed `a1b2c3d` (local)
 - `sprite_loader.h/c` — PNG sprite loading with hash table lookup
 - Organized directory: `sprites/terrain/`, `units/`, `navy/`, `buildings/`, `ui/`
 - Optional `sprites.json` manifest for animation configs
@@ -81,23 +81,25 @@ Modernization of the Conquer V5 classic strategy game, focusing on networking, g
 
 ## PLANNED PHASES
 
-### Phase 5: Sprite Art & Map Integration (Next)
-**Status:** Planning — Ray designing art style
+### Phase 5: Sprite Art & Map Integration (IN PROGRESS)
+**Status:** 5b Complete — Sprite infrastructure ready, awaiting art
 **Depends on:** Phase 4d (sprite loader) ✅
 
-**5a: Sprite Art Creation**
+**5a: Sprite Art Creation** — Deferred to Ray
 - Ray is designing the art style and creating real sprite PNGs
-- Replace 25 placeholder sprites with actual art
-- 64×64 base size (was 32×32, upgraded for better detail at close zoom)
+- Target: 64×64 base size for better detail at close zoom
 - Pointy-top hexes (corners get clipped by engine)
 - Keep important detail centered, pad edges for hex mask
-- Organized in `sprites/{terrain/elevation/, terrain/vegetation/, units/, navy/, buildings/, ui/}`
-- Animation via horizontal sprite strips configured in `sprites.json`
-- Reference: `SPRITE_LAYOUT.md` for naming conventions and status tracking
+- Reference: `SPRITE_LAYOUT.md` for naming conventions
 
-**5b: Sprite Integration into Game Rendering**
-- Replace hex color fills in `hexmapG_sdl2.c` with sprite rendering calls
+**5b: Sprite Integration into Game Rendering** ✅ — `PHASE5B_SPRITE_INTEGRATION.md`
+- `hexmapG_sprites.h/c` — Integrated sprite rendering with hex map
+- Layered compositing: Terrain → Vegetation → Buildings → Units → UI
+- Configurable offsets per zoom level (scales with zoom)
+- Toggle layers: sprites, vegetation, buildings, units
 - Wire `sprite_loader` into the main game display loop
+- 25 placeholder sprites generated (colored PPMs)
+- Test program: `make test-hexmap-sprites`
 - Layered compositing — render order per hex (bottom to top):
   1. Terrain/elevation (centered)
   2. Vegetation overlay (centered, alpha-blended over terrain)
@@ -117,6 +119,7 @@ Modernization of the Conquer V5 classic strategy game, focusing on networking, g
 - Smooth zoom transitions
 - Consider minimap or overview display
 - Coordinate overlay options
+- Ray to provide final art assets (PNG format)
 
 ### Phase 6: NPC AI Decision Layer (Future)
 **Status:** Sketched — not started
