@@ -7,7 +7,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* json-c is optional - only needed for sprites.json manifest */
+#ifdef HAS_JSON_C
 #include <json-c/json.h>
+#endif
 
 /* Hash table size (prime number for better distribution) */
 #define HASH_TABLE_SIZE 256
@@ -123,20 +127,23 @@ void sprite_manager_destroy(sprite_manager_t *mgr) {
     free(mgr);
 }
 
-/* Parse sprites.json for animation configs */
+/* Parse sprites.json for animation configs - json-c optional */
 static int parse_sprite_config(sprite_manager_t *mgr, int category, const char *name, sprite_anim_t *anim) {
+    /* Default values */
+    anim->frames = 1;
+    anim->speed = 0;
+    anim->frame_width = 0;
+    anim->frame_height = 0;
+    anim->current_frame = 0;
+    anim->last_update = 0;
+
+#ifdef HAS_JSON_C
     char path[SPRITE_PATH_MAX];
     snprintf(path, sizeof(path), "%s/%s.json", mgr->base_path, "sprites");
     
     FILE *fp = fopen(path, "r");
     if (!fp) {
         /* No config file - sprite is static */
-        anim->frames = 1;
-        anim->speed = 0;
-        anim->frame_width = 0;
-        anim->frame_height = 0;
-        anim->current_frame = 0;
-        anim->last_update = 0;
         return 0;
     }
     
@@ -191,6 +198,9 @@ static int parse_sprite_config(sprite_manager_t *mgr, int category, const char *
     }
     
     json_object_put(root);
+#else
+    (void)mgr; (void)category; (void)name;  /* Unused without json-c */
+#endif
     return 0;
 }
 

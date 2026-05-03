@@ -82,8 +82,9 @@ Modernization of the Conquer V5 classic strategy game, focusing on networking, g
 ## PLANNED PHASES
 
 ### Phase 5: Sprite Art & Map Integration (IN PROGRESS)
-**Status:** 5b Complete — Sprite infrastructure ready, awaiting art
+**Status:** 5b Complete — Sprite infrastructure ready, 5c Map Polish in progress
 **Depends on:** Phase 4d (sprite loader) ✅
+**Planning doc:** `PHASE5C_MAP_POLISH.md`
 
 **5a: Sprite Art Creation** — Deferred to Ray
 - Ray is designing the art style and creating real sprite PNGs
@@ -114,12 +115,17 @@ Modernization of the Conquer V5 classic strategy game, focusing on networking, g
 - UI sprites (cursor, selection, etc.)
 - Ensure fallback behavior remains for any missing sprites
 
-**5c: Map Polish**
-- Visual refinement of hex map at all zoom levels
-- Smooth zoom transitions
-- Consider minimap or overview display
-- Coordinate overlay options
-- Ray to provide final art assets (PNG format)
+**5c: Map Polish** ✅ — Phase complete
+- ✅ Smooth zoom transitions (250ms ease-out cubic interpolation)
+- ✅ Minimap display (bottom-right, 1px per hex, view rectangle overlay)
+- ✅ Coordinate overlay (pixel-drawn digits, toggle with 'C')
+
+**New key bindings:**
+- `M` - Toggle minimap
+- `C` - Toggle coordinate overlay
+- `+/-` - Smooth zoom (now animated)
+
+**Date completed:** 2026-05-03
 
 ### Phase 6: NPC AI Decision Layer (Future)
 **Status:** Sketched — not started

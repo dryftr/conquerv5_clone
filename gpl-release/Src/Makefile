@@ -83,11 +83,12 @@ test_sprite_loader: test_sprite_loader.c sdl2_display.o hexmapG_sdl2.o sprite_lo
 # Phase 5b: Hexmap with sprites test
 test-hexmap-sprites: test_hexmap_sprites
 test_hexmap_sprites: test_hexmap_sprites.c sdl2_display.o hexmapG_sdl2.o hexmapG_sprites.o sprite_loader.o
-	$(CC) $(CFLAGS) -DUSE_SDL2 -o $@ $^ -lSDL2 -lSDL2_ttf -lSDL2_image -lm -ljson-c
+	$(CC) $(CFLAGS) -DUSE_SDL2 -o $@ $^ -lSDL2 -lSDL2_ttf -lSDL2_image -lm
 	@echo "=== Hexmap Sprites Test Built ==="
 	@echo "Run: ./test_hexmap_sprites [-r WxH]"
 	@echo "Controls: Arrow/HJKL = cursor, WASD = pan, +/- = zoom"
 	@echo "          1-4 = display modes, F = toggle sprites, V/B/U = toggle layers"
+	@echo "          M = toggle minimap, C = toggle coordinates"
 	@echo "          R = reload sprites, Q/ESC = quit"
 
 # Sprite loader compilation

@@ -50,12 +50,14 @@ static void print_help(void) {
     printf("\n=== Hexmap Sprites Test Controls ===\n");
     printf("Arrow keys / HJKL: Move cursor\n");
     printf("WASD: Pan view\n");
-    printf("+/-: Zoom in/out\n");
+    printf("+/-: Zoom in/out (smooth)\n");
     printf("1-4: Display modes (Terrain, Elevation, Vegetation, Ownership)\n");
     printf("F: Toggle fallback mode (sprites on/off)\n");
     printf("V: Toggle vegetation layer\n");
     printf("B: Toggle buildings layer\n");
     printf("U: Toggle units layer\n");
+    printf("M: Toggle minimap\n");
+    printf("C: Toggle coordinate overlay\n");
     printf("R: Reload sprites (hot-reload)\n");
     printf("Q/ESC: Quit\n");
     printf("====================================\n\n");
@@ -188,14 +190,12 @@ int main(int argc, char *argv[]) {
                         case SDLK_PLUS:
                         case SDLK_EQUALS:
                         case SDLK_KP_PLUS:
-                            hexmap_set_zoom(&ctx.base, ctx.base.zoom + 1);
-                            hexmap_sprites_set_offsets(&ctx, ctx.base.zoom);
+                            hexmap_sprites_set_zoom_smooth(&ctx, ctx.base.zoom + 1);
                             printf("Zoom: %d\n", ctx.base.zoom);
                             break;
                         case SDLK_MINUS:
                         case SDLK_KP_MINUS:
-                            hexmap_set_zoom(&ctx.base, ctx.base.zoom - 1);
-                            hexmap_sprites_set_offsets(&ctx, ctx.base.zoom);
+                            hexmap_sprites_set_zoom_smooth(&ctx, ctx.base.zoom - 1);
                             printf("Zoom: %d\n", ctx.base.zoom);
                             break;
                             
@@ -240,6 +240,18 @@ int main(int argc, char *argv[]) {
                             printf("Reloading sprites...\n");
                             hexmap_sprites_reload(&ctx);
                             printf("Reloaded %d sprites\n", ctx.sprites ? ctx.sprites->sprite_count : 0);
+                            break;
+                            
+                        /* Toggle minimap */
+                        case SDLK_m:
+                            hexmap_sprites_minimap_toggle(&ctx);
+                            printf("Minimap: %s\n", ctx.minimap.enabled ? "ON" : "OFF");
+                            break;
+                            
+                        /* Toggle coordinate overlay */
+                        case SDLK_c:
+                            hexmap_sprites_coords_toggle(&ctx);
+                            printf("Coordinates: %s\n", ctx.coords.enabled ? "ON" : "OFF");
                             break;
                             
                         case SDLK_SLASH:
