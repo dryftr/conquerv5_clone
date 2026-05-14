@@ -1,10 +1,19 @@
 # Phase 5c: Map Polish
 
-## Status: IN PROGRESS
+## Status: COMPLETE (2026-05-03)
 
-**Started:** 2026-05-02 (cron continuation from Phase 5b completion)
-**Depends on:** Phase 5b (Sprite Integration) ✅ COMPLETE
-**Blockers:** Real sprite artwork (Ray creating in PixelOver)
+All Phase 5c tasks have been implemented and tested. Build succeeds with only minor warnings.
+
+## Files Modified
+- `Src/hexmapG_sprites.h` — Added zoom_transition_t, minimap_t, coord_overlay_t structures
+- `Src/hexmapG_sprites.c` — Implemented all Phase 5c features + coordinate digit drawing
+- `Src/test_hexmap_sprites.c` — Added M/C key bindings
+- `Src/sprite_loader.c` — Made json-c optional for broader compatibility
+
+## Next Steps
+- Phase 5 complete — awaiting Ray's artwork or ready to move to Phase 6 (NPC AI)
+- Consider playtesting current state before NPC work
+- May want to integrate Phase 5 features into main game loop
 
 ## Completed (from Phase 5b)
 - ✅ Sprite loader system with hot-reload

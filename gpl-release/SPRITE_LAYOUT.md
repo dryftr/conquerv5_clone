@@ -2,29 +2,36 @@
 
 ## Directory Structure
 
+** SOME CHANGES HAVE OCCURED: NEW elevation & vegetation changes
+
 ```
 sprites/
 ├── terrain/
 │   ├── elevation/          # 6 types
-│   │   ├── water.png
-│   │   ├── valley.png
-│   │   ├── clear.png
-│   │   ├── hill.png
-│   │   ├── mountain.png
-│   │   └── peak.png
+│   │   ├── water.png  (animated strip)          	X
+│   │   ├── valley.png (2 versions)
+│   │   ├── clear.png  (make green?)             	X
+│   │   ├── hill.png (2 versions)
+│   │   ├── mountain.png (versions m1-m3)		   (create with gray/green mixed base)
+│   │   └── mtn_base.png ( base+peak elevation)		X  (used to be peak.png, now mtn_base + peak is new elevation COMBO)
+|   |   |-- peak.png (slight up offset to center)	X  (uses slight up offset to fake "massive height" on hex
+|   |   |-- sand.png  (replces desert.png elev)       	X
+|   |
 │   └── vegetation/         # 12 types
-│       ├── volcano.png
-│       ├── desert.png
-│       ├── tundra.png
-│       ├── barren.png
-│       ├── lt_veg.png
-│       ├── good.png
-│       ├── wood.png
-│       ├── forest.png
-│       ├── jungle.png
-│       ├── swamp.png
-│       ├── ice.png
-│       └── none.png
+│       ├── volcano.png (same as peak.png TWO of these)
+│       ├── desert.png (cacti_v1-4 FEw [4])		X	
+│       ├── tundra.png (few of these 3-4)
+│       ├── barren.png (switch with current clear.png?)
+│       ├── lt_veg.png (plants/flowers? FEW of these)
+│       ├── good.png (????)
+│       ├── wood.png (only a few trees? SEVERAL)
+│       ├── forest.png (LOTS of these 6-8)
+│       ├── jungle.png (LOTS of these 6-8)
+│       ├── swamp.png (SEVERAL of these 3-6)
+│       ├── ice.png (FEW of these 3-4)
+│       └── none.png (clear png - just terrain shows)
+|	
+|
 ├── units/                  # 111 army types (see armyX.h)
 │   ├── infantry.png
 │   ├── archers.png
@@ -214,3 +221,4 @@ All using fallback rectangles.
 ---
 
 *Last updated: 2026-04-28 by Emmi*
+
