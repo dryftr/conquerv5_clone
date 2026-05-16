@@ -33,9 +33,8 @@
 #include "activeX.h"
 #include "hlightX.h"
 #include "displayG.h"
-#ifdef USE_SDL2
 #include "displayG_sdl2.h"
-#endif
+#include "display_dispatch.h"
 #include "patchlevel.h"
 
 /* indicator that player is not done yet */
@@ -141,9 +140,9 @@ main PARM_2 (int, argc, char **, argv)
 
   /* process the command line arguments */
 #ifndef FILELOCK
-  while ((i = getopt(argc, argv, "?BbcDMwGPhlpcn:d:sr:")) != EOF)
+  while ((i = getopt(argc, argv, "?BbcDMwGPhlpcn:d:sr:m:")) != EOF)
 #else
-  while ((i = getopt(argc, argv, "?BbDMwGPhlpcn:d:sr:")) != EOF)
+  while ((i = getopt(argc, argv, "?BbDMwGPhlpcn:d:sr:m:")) != EOF)
 #endif /* FILELOCK */
     switch (i) {
   case 'h':
@@ -252,27 +251,31 @@ main PARM_2 (int, argc, char **, argv)
         int w = 0, h = 0;
         if (sscanf(optarg, "%dx%d", &w, &h) == 2) {
             /* store globally for SDL2 init */
-            #ifdef USE_SDL2
             sdl2_set_resolution(w, h);
-            #endif
         } else {
             fprintf(stderr, "Invalid resolution format: %s (expected WxH)\n", optarg);
         }
     }
     break;
+  case 'm':
+    /* display mode: -m curses | -m sdl2 | -m auto */
+    display_set_backend(display_backend_from_string(optarg));
+    break;
   case '?':
     /* display correct command line arguments */
     fprintf(stderr,
 #ifndef FILELOCK
-	    "Command line format: %s [-nc] [-BbceGHhilMpsw -d DIR -nNAT]\n",
+	    "Command line format: %s [-nc] [-BbceGHhilMpsw -d DIR -nNAT -m MODE -r WxH]\n",
 #else
-	    "Command line format: %s [-nc] [-BbeGHhilMpsw -d DIR -nNAT]\n",
+	    "Command line format: %s [-nc] [-BbeGHhilMpsw -d DIR -nNAT -m MODE -r WxH]\n",
 #endif /* FILELOCK */
 	    argv[0]);
     fprintf(stderr, "\t-nc      do not read in %s file [first option only]\n",
 	    CONQRC_FILE);
     fprintf(stderr, "\t-n NAT   play as nation NAT\n");
     fprintf(stderr, "\t-d DIR   use to access different campaign\n");
+    fprintf(stderr, "\t-m MODE  display mode: curses, sdl2, or auto (default: auto)\n");
+    fprintf(stderr, "\t-r WxH   SDL2 window resolution (e.g., -r 1024x768)\n");
 #ifndef FILELOCK
     fprintf(stderr, "\t-c       clear lock for given nation, if allowed\n");
 #endif /* FILELOCK */
@@ -657,15 +660,11 @@ main PARM_2 (int, argc, char **, argv)
     exit(SUCCESS);
   }
 
-#ifdef USE_SDL2
-    if (sdl2_display_init_with_opts(argv[0]) != 0) {
-        fprintf(stderr, "SDL2 init failed\n");
-        exit(FAIL);
-    }
-#else
-    /* initialize curses display */
-    cq_init(argv[0]);
-#endif
+  /* Initialize display — runtime selectable between curses and SDL2 */
+  if (display_init(argv[0], argc, argv) != 0) {
+      fprintf(stderr, "Failed to initialize display backend\n");
+      exit(FAIL);
+  }
 
   /* display initial title screen -- end of setup done later */
   motd_display();

@@ -5,22 +5,22 @@ CFLAGS = -Wall -g -O0 -DDEBUG -I./Include -I../Include -DBSD -DPLATFORM_LINUX \
          -DEXEDIR=\"/home/rayray/conquerv5_clone/gpl-release\" \
          -DCONQ_SORT=\"/home/rayray/conquerv5_clone/gpl-release/conqsort\"
 
-# Optional SDL2 libraries – added when building with USE_SDL2
-SDL_LIBS =
-SDL_CFLAGS =
-ifdef USE_SDL2
-SDL_LIBS = -lSDL2 -lSDL2_ttf -lm
+# SDL2 is now always linked for runtime display switching (gpl-release only).
+# If SDL2 is not available at runtime, the game falls back to curses automatically.
+SDL_LIBS = -lSDL2 -lSDL2_ttf -lSDL2_image -lm
 SDL_CFLAGS = -DUSE_SDL2
-endif
 
-# All source files except mainA.c (for conquer) + mainG.c (for conqrun)
-SRCS_GAME = $(filter-out main_sdl2.c,$(wildcard *.c))
+# Source files for conquer build (game) - exclude tests and alternate mains
+SRCS_GAME = $(filter-out mainA.c main_sdl2.c test_%.c,$(wildcard *.c))
 OBJS_GAME = $(patsubst %.c,%.o,$(SRCS_GAME))
-GAME_OBJS = $(filter-out mainA.o, $(OBJS_GAME))
+# Filter out stubs.o, we'll use target-specific version
+GAME_OBJS = $(filter-out mainA.o stubs.o,$(OBJS_GAME))
 
-SRCS_ADMIN = $(wildcard *.c)
+# Source files for conqrun build (admin) - exclude tests and game main
+SRCS_ADMIN = $(filter-out mainG.c main_sdl2.c test_%.c,$(wildcard *.c))
 OBJS_ADMIN = $(patsubst %.c,%.o,$(SRCS_ADMIN))
-ADMIN_OBJS = $(filter-out mainG.o, $(OBJS_ADMIN)) stubs.o
+# Filter out stubs.o from common objs, we'll build target-specific versions
+ADMIN_OBJS = $(filter-out mainG.o stubs.o,$(OBJS_ADMIN))
 
 # SDL2 display objects (Phase 4)
 SDL2_DISPLAY_OBJS = sdl2_display.o displayG_sdl2.o
@@ -36,11 +36,19 @@ HEXMAP_SPRITES_OBJS = hexmapG_sprites.o
 
 all: conquer conqrun
 
-conquer: mainG.o $(filter-out main_sdl2.o,$(GAME_OBJS)) $(SDL2_DISPLAY_OBJS)
+conquer: CFLAGS += -DCONQUER_BUILD
+conquer: mainG.o $(filter-out main_sdl2.o stubs.o,$(GAME_OBJS)) stubs_conquer.o $(SDL2_DISPLAY_OBJS) display_dispatch.o
 	$(CC) $(CFLAGS) -o $@ $^ $(SDL_LIBS) -lncurses -lcrypt
 
-conqrun: mainA.o $(filter-out main_sdl2.o,$(ADMIN_OBJS)) $(SDL2_DISPLAY_OBJS)
+conqrun: mainA.o $(filter-out main_sdl2.o,$(ADMIN_OBJS)) stubs_conqrun.o $(SDL2_DISPLAY_OBJS) display_dispatch.o
 	$(CC) $(CFLAGS) -o $@ $^ $(SDL_LIBS) -lncurses -lcrypt
+
+# Target-specific stub objects
+stubs_conquer.o: stubs.c
+	$(CC) $(CFLAGS) -DCONQUER_BUILD -c $< -o $@
+
+stubs_conqrun.o: stubs.c
+	$(CC) $(CFLAGS) -DCONQRUN_BUILD -c $< -o $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -110,7 +118,11 @@ sdl2-800: conquer conqrun
 sdl2-1024: clean
 sdl2-1024: conquer conqrun
 
-clean:
-	rm -f *.o $(SDL2_DISPLAY_OBJS) $(HEXMAP_OBJS) $(SPRITE_OBJS) $(HEXMAP_SPRITES_OBJS) conquer conqrun test_sdl2 test_hexmap test_sprite_loader test_hexmap_sprites
+# Display dispatch (runtime backend selector)
+display_dispatch.o: display_dispatch.c display_dispatch.h
+	$(CC) $(CFLAGS) -DUSE_SDL2 -c $< -o $@
 
-.PHONY: clean all sdl2 sdl2-800 sdl2-1024 test-sdl2 test-hexmap test-sprites test-hexmap-sprites
+clean:
+	rm -f *.o $(SDL2_DISPLAY_OBJS) $(HEXMAP_OBJS) $(SPRITE_OBJS) $(HEXMAP_SPRITES_OBJS) display_dispatch.o stubs_conquer.o stubs_conqrun.o conquer conqrun test_sdl2 test_hexmap test_sprite_loader test_hexmap_sprites
+
+.PHONY: clean all test-sdl2 test-hexmap test-sprites test-hexmap-sprites
