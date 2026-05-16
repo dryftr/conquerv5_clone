@@ -29,7 +29,7 @@ Modernization of the Conquer V5 classic strategy game, focusing on networking, g
 - Action messages: `mp_send_move()`, `mp_send_attack()`, `mp_send_chat()`
 - Integrated with Phase 2 (sockets + packets + encryption)
 
-### Phase 4: Graphics Modernization ✅ (4a-4d)
+### Phase 4: Graphics Modernization ✅ (4a-4e)
 **4a: SDL2 Display Backend** — Commit `421558e`
 - `displayG_sdl2.h/c` — curses-like API wrapper over SDL2
 - Conditional compilation via `USE_SDL2` flag
@@ -53,6 +53,14 @@ Modernization of the Conquer V5 classic strategy game, focusing on networking, g
 - Hex-clipped rendering, animated sprite strips
 - SDL2_image integration
 
+**4e: Runtime Display Dispatch** — Commit `2c04216`
+- `display_dispatch.h/c` — Runtime backend selector (curses vs SDL2)
+- `-m MODE` flag: `curses`, `sdl2`, or `auto` (tries SDL2, falls back to curses)
+- `CONQUER_DISPLAY` environment variable support
+- `display_ops_t` interface with function pointer dispatch
+- Both backends always linked; graceful SDL2 failure handling
+- Makefile refactoring: target-specific stubs for shared variables
+
 ### Housekeeping ✅
 **Commit `d585a7b`:** Restored `original/` to pristine import state
 **Commit `b110495`:** Built in-game help docs (16 .doc files from nroff sources), exposed hex map data tables as extern
@@ -60,14 +68,16 @@ Modernization of the Conquer V5 classic strategy game, focusing on networking, g
 ## CURRENT STATE
 
 ### Build System
-- Makefile-based, compiles with warnings (format issues, unused variables)
-- Stubs: `stubs.c` for missing functions (`hangup`, `tmp_parsep`, etc.)
+- Makefile-based, compiles both binaries successfully
+- Target-specific stubs (stubs_conquer.o vs stubs_conqrun.o) for shared variable handling
+- SDL2 always linked; runtime selection via `-m MODE` (curses|sdl2|auto)
 - Defines: `DEFAULTDIR`, `EXEDIR`, `CONQ_SORT` set in Makefiles
-- SDL2 build: `make sdl2`, `make test-hexmap`, `make test-sprites`
+- SDL2 tests: `make test-hexmap`, `make test-sprites`, `make test-hexmap-sprites`
 - Docs build: `nroff roff-mac.nr <file>.nr | ./ezconv > <file>.doc`
 
 ### What Works
-- Game compiles and runs (curses mode)
+- Game compiles and runs with runtime display switching
+- `conquer -m curses` (terminal) or `conquer -m sdl2` (graphical)
 - SDL2 display and hex map renderer functional
 - Sprite loader loads PNGs, falls back gracefully, hot-reloads on R key
 - In-game help system now works (all 16 help docs generated)
@@ -188,6 +198,7 @@ The game has a solid NPC backbone (`executeX.h/c` — command execution system) 
 | `gpl-release/Src/sockets.h/c` | TCP/UDP socket layer |
 | `gpl-release/Src/packets.h/c` | Packet serialization |
 | `gpl-release/Src/encrypt.h/c` | Encryption framework |
+| `gpl-release/Src/display_dispatch.h/c` | Runtime display backend selector |
 | `gpl-release/Src/multiplayer.h/c` | Multiplayer protocol |
 | `gpl-release/Docs/` | nroff source + built .doc files |
 | `gpl-release/sprites/` | Sprite assets directory |
