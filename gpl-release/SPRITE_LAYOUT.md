@@ -2,7 +2,62 @@
 
 ## Directory Structure
 
-** SOME CHANGES HAVE OCCURED: NEW elevation & vegetation changes
+RAY'S IDEAS:
+---------------------------------------------------------------------------
+## WORLD MAP TILE CHANGES ##
+*THESE CHANGES DO NOT APPLY TO ncurses MODE*
+
+1. MAP SPRITE CHANGES:
+peak.png *CHANGED* - uses elevation (mtn_base_#.png) + vegetation (peak.png) combined
+volcano.png *CHANGED* - uses an elevation (mtn_base_#.png) + vegetation (volcano_#.png) combined
+desert.png *CHANGED* - uses elevation (sand_#.png) + vegetation (cacti_#.png) combined
+hill.png *CHANGED* - uses elevation (hill_#.png) + vegetation (hill_veg#.png) combined
+barren.png *CHANGED* - is NOW an elevation tile, NOT vegetation
+
+2. POSSIBLE CHANGES:
+None
+
+3. ANIMATED TILES
+water tile
+volcano tile(s)
+
+4. SOME TILES HAVE MULTIPLES TO ALLOW FOR SOME SLIGHT VARIATIONS AND REDUCE THE "TILING" EFFECT OVER MAP REGIONS.
+Need to account for numbered tiles, like desert1.png, desert2.png, etc. is it possible to allow for as many as a modder desires, or should there be a cap (like 8).
+
+## Peak Offset / Z-Order Issue (noted 2026-05-15)
+
+Peak.png draws with a slight upward offset to fake height. Problem: the offset pixels bleed into the hex above. If that hex has a building/city, draw order (top-to-bottom rows) means the peak draws AFTER the building, so the peak renders on top of the building above it. That's wrong.
+
+**Options when we implement:**
+1. Tighten hex clip mask — contains peak, loses height illusion
+2. Multi-pass rendering — elevation bases → overlays → peak tops (buildings always under peaks, which looks correct)
+3. Design peak sprites with transparent edges at the offset boundary
+
+Option 2 is cleanest long-term but changes the map renderer. Plan for this.
+
+**Decision (2026-05-15):** Approach A — semi-transparent peak tips handle overlap naturally. Multi-pass rendering confirmed for the architecture.
+
+## Render Pass Order (Confirmed)
+
+All hexes render in layers across the entire map, not per-hex:
+
+| Pass | Content | Notes |
+|------|---------|-------|
+| 1 | Elevation bases | water, valley, clear, hill, mountain, mtn_base |
+| 2 | Vegetation overlays | forest, desert, jungle, etc. (50% alpha) | NOTE: Since vegetation has an transparent background, may not need 50% alpha effect
+| 3 | Buildings/designations | city, farm, mine, town, etc. |
+| 4 | Peak tops (offset) | Semi-transparent tips for height illusion |
+| 5 | Units | Player/AI armies, navy |
+| 6+ | Effects (future) | Weather, fire, spell animations |
+
+Peak overlap handled by art: upper pixels of peak sprites are semi-transparent. If a peak tip overlaps a city above, it reads as depth (mountain behind town), not a rendering error.
+
+---
+
+UNITS ARE LIKELY GOING TO BE REPRESENTED BY A SIMPLE ICON FOR "COMMON" UNITS, WITH A COLORING OR SLIGHT GRAPHIC DISTINCTION BETWEEN RACES
+Example: INFANTRY USE SWORD & SHIELD ICON (SHIELD DESIGN VARIES BY RACE) OR A BOW ICON FOR ARCHERS (WITH BOW DESIGNS VARIED BY RACES)
+
+---------------------------------------------------------------------------
 
 ```
 sprites/
@@ -11,15 +66,14 @@ sprites/
 │   │   ├── water.png  (animated strip)          	X
 │   │   ├── valley.png (2 versions)
 │   │   ├── clear.png  (make green?)             	X
-│   │   ├── hill.png (2 versions)
-│   │   ├── mountain.png (versions m1-m3)		   (create with gray/green mixed base)
-│   │   └── mtn_base.png ( base+peak elevation)		X  (used to be peak.png, now mtn_base + peak is new elevation COMBO)
-|   |   |-- peak.png (slight up offset to center)	X  (uses slight up offset to fake "massive height" on hex
-|   |   |-- sand.png  (replces desert.png elev)       	X
+│   │   ├── hill.png (2 versions)                   X
+│   │   ├── mountain.png (versions 3)		        X
+│   │   └── mtn_base.png ( base+peak elevation)		X  (used to be peak.png, now mtn_base + peak.png is new COMBO elevation)
+|   |   |-- sand.png  (replces desert.png elev)     X
 |   |
 │   └── vegetation/         # 12 types
-│       ├── volcano.png (same as peak.png TWO of these)
-│       ├── desert.png (cacti_v1-4 FEw [4])		X	
+│       ├── volcano.png (same as peak.png TWO of these, animated)
+│       ├── cacti.png (cacti_v1-4 FEw [4])		    X	
 │       ├── tundra.png (few of these 3-4)
 │       ├── barren.png (switch with current clear.png?)
 │       ├── lt_veg.png (plants/flowers? FEW of these)
@@ -27,13 +81,14 @@ sprites/
 │       ├── wood.png (only a few trees? SEVERAL)
 │       ├── forest.png (LOTS of these 6-8)
 │       ├── jungle.png (LOTS of these 6-8)
-│       ├── swamp.png (SEVERAL of these 3-6)
+│       ├── swamp.png (SEVERAL of these 3-6) 2      X        
 │       ├── ice.png (FEW of these 3-4)
+|       |-- peak.png (slight up offset to center)	X  (uses slight up offset to fake "massive height" on hex
 │       └── none.png (clear png - just terrain shows)
 |	
 |
 ├── units/                  # 111 army types (see armyX.h)
-│   ├── infantry.png
+│   ├── infantry.png    
 │   ├── archers.png
 │   ├── militia.png
 │   ├── dragon.png
