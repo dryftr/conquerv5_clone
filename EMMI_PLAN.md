@@ -91,11 +91,23 @@ Modernization of the Conquer V5 classic strategy game, focusing on networking, g
 
 ## PLANNED PHASES
 
-### Phase 6: NPC AI Decision Layer 🔄 IN PLANNING
-**Status:** Architecture sketched, awaiting go/no-go decision
+### Phase 6: NPC AI Decision Layer 📝 ARCHITECTURE COMMITTED
+**Status:** Architecture document complete, awaiting Ray's go/no-go decision
 **Depends on:** Phase 5 complete, playtesting of resource mechanics recommended
 
-See "CURRENT PHASE" section above for full Phase 6 details.
+**Document:** `PHASE6_NPC_AI.md` — Complete architecture specification including:
+- Strategy selection system (personality-driven AI)
+- Tactical decision engine (target evaluation, unit movement)
+- Economic management module (construction, resource distribution)
+- Integration plan and testing strategy
+- Timeline estimate: 9-13 days for Phase 6a (core framework)
+
+**Decision points for Ray:**
+1. Priority: Is Phase 6 a blocker for multiplayer release, or can it come after?
+2. Scope: Full Phase 6a-6c, or just 6a (basic AI) for now?
+3. Personality types: Any specific nation behaviors to model?
+4. Difficulty: Should AI see through fog of war, or play fair?
+5. Multiplayer: Should AI nations be playable slots in multiplayer?
 
 ### Future Considerations
 
