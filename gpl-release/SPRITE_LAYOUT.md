@@ -15,7 +15,7 @@ hill.png *CHANGED* - uses elevation (hill_#.png) + vegetation (hill_veg#.png) co
 barren.png *CHANGED* - is NOW an elevation tile, NOT vegetation
 
 2. POSSIBLE CHANGES:
-None
+valley - since there are "borders" now, should there be unqiue tree sets to go with them, or should I just let the overlap? Probably the later to reduce redundnat sprites.
 
 3. ANIMATED TILES
 water tile
@@ -79,12 +79,12 @@ sprites/
 │       ├── lt_veg.png (plants/flowers? FEW of these)
 │       ├── good.png (????)
 │       ├── wood.png (only a few trees? SEVERAL)
-│       ├── forest.png (LOTS of these 6-8)
-│       ├── jungle.png (LOTS of these 6-8)
+│       ├── forest.png (SEVERAL of these 4-6)
+│       ├── jungle.png (SEVERAL of these 4-6)
 │       ├── swamp.png (SEVERAL of these 3-6) 2      X        
 │       ├── ice.png (FEW of these 3-4)
 |       |-- peak.png (slight up offset to center)	X  (uses slight up offset to fake "massive height" on hex
-│       └── none.png (clear png - just terrain shows)
+│       └── none.png (clear.png - just terrain shows)
 |	
 |
 ├── units/                  # 111 army types (see armyX.h)
