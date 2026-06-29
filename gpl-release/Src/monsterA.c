@@ -24,6 +24,7 @@
  * For relicensing documentation, see RELICENSING-PERMISSIONS.md
  */
 #include "dataA.h"
+#include "activeX.h"
 #include "armyX.h"
 #include "cityX.h"
 #include "navyX.h"
@@ -32,6 +33,7 @@
 #include "worldX.h"
 #include "elevegX.h"
 #include "statusX.h"
+#include "ai/ai_monsters.h"
 
 /* MONSTER_GROWTH -- Expand the military and the "treasures" */
 void
@@ -252,4 +254,31 @@ upd_pirates PARM_0(void)
 {
   /* start with the basics */
   monster_growth();
+}
+
+/* ============================================================
+ * AI_MONSTER_UPDATE — Dispatcher for monster nation turns.
+ *
+ * Called from cpu_update() when n_ismonster(ntn_ptr->active).
+ * Routes to the appropriate monster update based on active type.
+ * Returns 0 on success, -1 if not a recognized monster type.
+ * ============================================================ */
+int
+ai_monster_update PARM_0(void)
+{
+  if (ntn_ptr == NULL) return -1;
+
+  if (n_islizard(ntn_ptr->active)) {
+    upd_lizards();
+  } else if (n_issavage(ntn_ptr->active)) {
+    upd_savages();
+  } else if (n_ispirate(ntn_ptr->active)) {
+    upd_pirates();
+  } else if (n_isnomad(ntn_ptr->active)) {
+    upd_nomads();
+  } else {
+    return -1;
+  }
+
+  return 0;
 }

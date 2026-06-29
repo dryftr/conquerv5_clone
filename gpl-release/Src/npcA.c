@@ -31,6 +31,7 @@
 #include "ai/personality.h"
 #include "ai/fog_of_war.h"
 #include "ai/decision.h"
+#include "ai/ai_monsters.h"
 
 /* structure for use by NPC nations */
 typedef struct s_npcinfo {
@@ -90,24 +91,13 @@ move_for_ntn PARM_0(void)
 
   /* determine which form the update will take */
   if (n_ismonster(ntn_ptr->active)) {
-    if (n_islizard(ntn_ptr->active)) {
-      upd_lizards();
-    } else if (n_issavage(ntn_ptr->active)) {
-      upd_savages();
-    } else if (n_ispirate(ntn_ptr->active)) {
-      upd_pirates();
-    } else if (n_isnomad(ntn_ptr->active)) {
-      upd_nomads();
-    } else {
-      /* rebellion -- do nothing yet */
-      fprintf(fupdate,
-	      "    %s mode computer update being made (unimplemented)\n",
-	      aggressname[n_aggression(ntn_ptr->active)]);
-    }
-  } else {
-    /* computerized motion */
-    cpu_update();
+    /* Monster nations use fixed behavior patterns */
+    ai_monster_update();
+  } else if (ntn_ptr->active != INACTIVE) {
+    /* Personality AI handles this */
+    cpu_update_personality((ntntype)country);
   }
+  /* INACTIVE nations: no action */
 }
 
 /* ROVER_VALUE -- Determine the value of a sector to rover units */

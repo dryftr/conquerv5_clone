@@ -24,6 +24,22 @@ enum diplotype {
   DIP_UNMET, DIP_ALLIED, DIP_TREATY, DIP_FRIENDLY, DIP_PEACEFUL,
   DIP_NEUTRAL, DIP_HOSTILE, DIP_BELLICOSE, DIP_WAR, DIP_JIHAD
 };
+
+/* Nation active type constants (from activeX.h) */
+#define ACT_STATIC    0
+#define ACT_KILLER    1
+#define ACT_ENFORCE   2
+#define ACT_OVERT     3
+#define ACT_MOBILE    4
+#define ACT_GUERRILA  5
+
+#define NPC_LIZARD   28
+#define NPC_SAVAGE   36
+#define NPC_NOMAD    40
+#define NPC_PIRATE   44
+#define INACTIVE     0
+#define UNOWNED      0
+
 #endif
 
 #endif /* AI_STANDALONE_TYPES_H */

@@ -24,6 +24,7 @@
 #include "statusX.h"
 #include "action_expand.h"
 #include "ai_turn.h"
+#include "ai/ai_tactical.h"
 
 /* ============================================================
  * Internal: Strategy Weight Tables
@@ -438,6 +439,68 @@ ai_turn_report(TURN_CONTEXT_PTR ctx)
 }
 
 /* ============================================================
+ * Phase 5: Tactical Decisions
+ *
+ * Evaluates attack/retreat/garrison/reinforce decisions based on
+ * personality thresholds and fog-of-war-constrained intel.
+ * ============================================================ */
+
+int
+ai_turn_tactical(TURN_CONTEXT_PTR ctx)
+{
+  TACTICAL_STATE tac_state;
+  int result;
+
+  if (ctx == NULL) return 0;
+
+  result = ai_tactical_init(&tac_state, ctx->nation_id);
+  if (result != 0) {
+    fprintf(fupdate,
+            "  TAC: Nation %d tactical init failed\n",
+            ctx->nation_id);
+    return 0;
+  }
+
+  /* Override attack/retreat thresholds based on strategy */
+  switch (ctx->strategy) {
+  case STRAT_ATTACK:
+    /* Attack strategy: more aggressive thresholds */
+    tac_state.attack_ratio -= 10;
+    tac_state.retreat_ratio -= 10;
+    break;
+  case STRAT_DEFEND:
+    /* Defend strategy: more cautious thresholds */
+    tac_state.attack_ratio += 20;
+    tac_state.retreat_ratio += 15;
+    break;
+  case STRAT_ECONOMY:
+    /* Economy strategy: avoid fights unless clearly winning */
+    tac_state.attack_ratio += 30;
+    tac_state.retreat_ratio += 20;
+    break;
+  default:
+    /* Other strategies: use personality defaults */
+    break;
+  }
+
+  fprintf(fupdate,
+          "  TAC: Nation %d entering tactical phase "
+          "(strategy=%s, attack=%d%%, retreat=%d%%)\n",
+          ctx->nation_id,
+          ai_turn_strategy_name(ctx->strategy),
+          tac_state.attack_ratio,
+          tac_state.retreat_ratio);
+
+  result = ai_tactical_execute(&tac_state);
+
+  fprintf(fupdate,
+          "  TAC: Nation %d tactical phase complete (%d actions)\n",
+          ctx->nation_id, result);
+
+  return result;
+}
+
+/* ============================================================
  * Main Entry: Execute Full AI Turn
  * ============================================================ */
 
@@ -478,15 +541,19 @@ ai_turn_execute(TURN_CONTEXT_PTR ctx, int nation_id)
           nation_id, ai_turn_strategy_name(ctx->strategy),
           ctx->threat_level, ctx->opportunity_level);
 
-  /* Phase 5: Execute strategy */
+  /* Phase 5: Tactical decisions (attack, retreat, garrison, reinforce) */
+  if (ctx->phase_flags & PHASE_TACTICAL)
+    ctx->tactical_actions = ai_turn_tactical(ctx);
+
+  /* Phase 6: Execute strategy */
   if (ctx->phase_flags & (PHASE_EXPAND | PHASE_MILITARY | PHASE_BUILD))
     ai_turn_execute_strategy(ctx);
 
-  /* Phase 6: Rove remaining armies */
+  /* Phase 7: Rove remaining armies */
   if (ctx->phase_flags & PHASE_ROVE)
     ai_turn_rovers(ctx);
 
-  /* Phase 7: Generate report */
+  /* Phase 8: Generate report */
   if (ctx->phase_flags & PHASE_REPORT)
     ai_turn_report(ctx);
 

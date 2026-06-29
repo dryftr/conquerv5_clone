@@ -65,11 +65,12 @@ typedef enum {
 #define PHASE_DIPLOMACY    0x02  /* Evaluate diplomatic state */
 #define PHASE_STRATEGY     0x04  /* Select strategy */
 #define PHASE_EXPAND       0x08  /* Territory claiming */
-#define PHASE_MILITARY     0x10  /* Army movement */
-#define PHASE_BUILD        0x20  /* Construction */
-#define PHASE_ROVE          0x40  /* Rove remaining armies */
-#define PHASE_REPORT       0x80  /* Generate turn report */
-#define PHASE_ALL          0xFF  /* Execute all phases */
+#define PHASE_TACTICAL     0x10  /* Combat decisions: attack, retreat, garrison */
+#define PHASE_MILITARY     0x20  /* Army movement */
+#define PHASE_BUILD        0x40  /* Construction */
+#define PHASE_ROVE          0x80  /* Rove remaining armies */
+#define PHASE_REPORT       0x100  /* Generate turn report */
+#define PHASE_ALL          0x1FF  /* Execute all phases */
 
 /* ============================================================
  * Turn Context Structure
@@ -92,6 +93,7 @@ typedef struct s_turn_context {
   int armies_moved;           /* Armies moved this turn */
   int buildings_started;      /* Buildings started this turn */
   int roving_armies;          /* Armies sent roving */
+  int tactical_actions;       /* Tactical actions (attacks/retreats/garrisons) */
 
   /* Diplomatic assessment */
   int threat_level;           /* 0-100 perceived danger */
@@ -161,13 +163,16 @@ void ai_turn_evaluate(TURN_CONTEXT_PTR ctx);
 /* Phase 4: Select strategy based on personality + situation */
 strategy_type_t ai_turn_select_strategy(TURN_CONTEXT_PTR ctx);
 
-/* Phase 5: Execute the selected strategy */
+/* Phase 5: Tactical decisions (attack, retreat, garrison, reinforce) */
+int ai_turn_tactical(TURN_CONTEXT_PTR ctx);
+
+/* Phase 6: Execute the selected strategy */
 turn_result_t ai_turn_execute_strategy(TURN_CONTEXT_PTR ctx);
 
-/* Phase 6: Rove remaining unassigned armies */
+/* Phase 7: Rove remaining unassigned armies */
 int ai_turn_rovers(TURN_CONTEXT_PTR ctx);
 
-/* Phase 7: Generate turn report */
+/* Phase 8: Generate turn report */
 void ai_turn_report(TURN_CONTEXT_PTR ctx);
 
 /* Helper: get strategy name string */
