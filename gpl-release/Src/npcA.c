@@ -28,8 +28,9 @@
 #include "moveX.h"
 #include "activeX.h"
 #include "statusX.h"
-#include "action_expand.h"
-#include "ai_turn.h"
+#include "ai/personality.h"
+#include "ai/fog_of_war.h"
+#include "ai/decision.h"
 
 /* structure for use by NPC nations */
 typedef struct s_npcinfo {
@@ -47,34 +48,32 @@ typedef struct s_target {
   struct s_target *next;	/* linked list information */
 } TARGET_STRUCT, *TARGET_PTR;
 
+/* forward declarations for AI integration */
+extern int cpu_update_personality(ntntype nation_id);
+extern void passive_update(void);
+
 /* storage for the NPC code */
 TARGET_PTR target_list = NULL;
 NPCINFO_STRUCT military_stats;
 
-/* CPU_UPDATE -- computer controlled update of the nation
- *
- * Sprint 1.4: Replaced #ifdef NOT_DONE stubs with real AI pipeline.
- * Monster types (lizard, savage, pirate, nomad) are handled separately
- * in move_for_ntn() and remain unchanged.
- *
- * Pipeline: init → claim → move → build → report
- * Personality-weighted, fog-of-war constrained (Honest AI).
- */
+/* CPU_UPDATE -- computer controlled update of the nation */
 static void
 cpu_update PARM_0(void)
 {
-  TURN_CONTEXT turn_ctx;
-
   /* give the outward indicator */
   fprintf(fupdate,
-	  "    %s mode computer update\n",
+	  "    %s mode computer update being made\n",
 	  aggressname[n_aggression(ntn_ptr->active)]);
 
-  /* Execute full AI turn pipeline */
-  turn_result_t r = ai_turn_execute(&turn_ctx, country);
-
-  if (r != TURN_OK && r != TURN_NO_TERRITORY) {
-    fprintf(fupdate, "    AI: turn failed (result %d)\n", r);
+  /* Personality-driven AI update.
+   * Routes through fog-of-war-limited decision engine.
+   * Monster nations never reach this function.
+   */
+  if (cpu_update_personality((ntntype)country) != 0) {
+    /* Fallback: if personality engine fails, use passive behavior */
+    fprintf(fupdate,
+	    "    [AI] Personality engine failed, using passive fallback\n");
+    passive_update();
   }
 }
 
