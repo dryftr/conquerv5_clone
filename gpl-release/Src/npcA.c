@@ -28,6 +28,8 @@
 #include "moveX.h"
 #include "activeX.h"
 #include "statusX.h"
+#include "action_expand.h"
+#include "ai_turn.h"
 
 /* structure for use by NPC nations */
 typedef struct s_npcinfo {
@@ -49,40 +51,31 @@ typedef struct s_target {
 TARGET_PTR target_list = NULL;
 NPCINFO_STRUCT military_stats;
 
-/* CPU_UPDATE -- computer controlled update of the nation */
+/* CPU_UPDATE -- computer controlled update of the nation
+ *
+ * Sprint 1.4: Replaced #ifdef NOT_DONE stubs with real AI pipeline.
+ * Monster types (lizard, savage, pirate, nomad) are handled separately
+ * in move_for_ntn() and remain unchanged.
+ *
+ * Pipeline: init → claim → move → build → report
+ * Personality-weighted, fog-of-war constrained (Honest AI).
+ */
 static void
 cpu_update PARM_0(void)
 {
+  TURN_CONTEXT turn_ctx;
+
   /* give the outward indicator */
   fprintf(fupdate,
-	  "    %s mode computer update being made (not fully implemented)\n",
+	  "    %s mode computer update\n",
 	  aggressname[n_aggression(ntn_ptr->active)]);
 
-#ifdef NOT_DONE
-  /* determine strategy */
-  assign_strategy();
+  /* Execute full AI turn pipeline */
+  turn_result_t r = ai_turn_execute(&turn_ctx, country);
 
-  /* assign sector designations */
-  sector_duties();
-
-  /* reinforce garrisons and build new troops */
-  buildup();
-
-  /* set rovers */
-  check_rovers();
-
-  /* defensive set */
-  stabilize();
-
-  /* offensive set */
-  expand();
-
-  /* redistribute goods */
-  npc_distribute();
-
-  /* handle any constructions */
-  npc_construct();
-#endif /* NOT_DONE */
+  if (r != TURN_OK && r != TURN_NO_TERRITORY) {
+    fprintf(fupdate, "    AI: turn failed (result %d)\n", r);
+  }
 }
 
 /* MOVE_FOR_NTN -- perform a turn of movement for the current nation */

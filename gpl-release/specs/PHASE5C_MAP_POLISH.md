@@ -75,7 +75,7 @@ These don't depend on artwork:
 
 ## Art Tasks (Ray)
 
-Per SPRITE_LAYOUT.md:
+Per specs/SPRITE_LAYOUT.md:
 - 6 elevation sprites (water needs animation frames)
 - 12 vegetation sprites (volcano, forest, jungle animated)
 - 111 unit sprites

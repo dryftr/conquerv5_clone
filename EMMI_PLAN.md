@@ -95,7 +95,7 @@ Modernization of the Conquer V5 classic strategy game, focusing on networking, g
 **Status:** Architecture document complete, awaiting Ray's go/no-go decision
 **Depends on:** Phase 5 complete, playtesting of resource mechanics recommended
 
-**Document:** `PHASE6_NPC_AI.md` — Complete architecture specification including:
+**Document:** `gpl-release/specs/PHASE6_NPC_AI.md` — Complete architecture specification including:
 - Strategy selection system (personality-driven AI)
 - Tactical decision engine (target evaluation, unit movement)
 - Economic management module (construction, resource distribution)

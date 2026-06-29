@@ -1,0 +1,44 @@
+# Makefile for AI test suites
+# Sprint 1 Tasks 1.4c + 1.5
+
+CC = gcc
+CFLAGS = -Wall -g -O0 -DDEBUG -DTEST_STANDALONE -I../Include -DBSD -DPLATFORM_LINUX
+LDFLAGS =
+
+# Task 1.4c: Action Expand tests
+TEST_EXPAND_SRC = test_action_expand.c
+PROD_EXPAND_SRC = action_expand.c
+TEST_EXPAND_BIN = test_action_expand
+
+# Task 1.5: AI Turn Orchestrator tests
+TEST_TURN_SRC = test_ai_turn.c
+PROD_TURN_SRC = ai_turn.c
+TEST_TURN_BIN = test_ai_turn
+
+# Shared mock globals
+MOCK_SRC = test_mock_globals.c
+
+all: $(TEST_EXPAND_BIN) $(TEST_TURN_BIN)
+
+# Task 1.4c: Action Expand
+$(TEST_EXPAND_BIN): $(TEST_EXPAND_SRC) $(MOCK_SRC) $(PROD_EXPAND_SRC)
+	$(CC) $(CFLAGS) -o $@ $(TEST_EXPAND_SRC) $(MOCK_SRC) $(PROD_EXPAND_SRC) $(LDFLAGS)
+
+# Task 1.5: AI Turn Orchestrator
+# Needs both action_expand.o and ai_turn.o since the turn orchestrator
+# calls action_expand functions
+$(TEST_TURN_BIN): $(TEST_TURN_SRC) $(MOCK_SRC) $(PROD_TURN_SRC) $(PROD_EXPAND_SRC)
+	$(CC) $(CFLAGS) -o $@ $(TEST_TURN_SRC) $(MOCK_SRC) $(PROD_TURN_SRC) $(PROD_EXPAND_SRC) $(LDFLAGS)
+
+test-expand: $(TEST_EXPAND_BIN)
+	./$(TEST_EXPAND_BIN)
+
+test-turn: $(TEST_TURN_BIN)
+	./$(TEST_TURN_BIN)
+
+test: test-expand test-turn
+
+clean:
+	rm -f $(TEST_EXPAND_BIN) $(TEST_TURN_BIN) *.o
+
+.PHONY: all test test-expand test-turn clean
