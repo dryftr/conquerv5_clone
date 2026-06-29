@@ -10,6 +10,11 @@ CFLAGS = -Wall -g -O0 -DDEBUG -I./Include -I../Include -DBSD -DPLATFORM_LINUX \
 SDL_LIBS = -lSDL2 -lSDL2_ttf -lSDL2_image -lm
 SDL_CFLAGS = -DUSE_SDL2
 
+# AI module sources (Sprint 0-1: personality, fog, decision, diplomacy, report, integration)
+# Exclude test files from ai/ subdirectory
+AI_SRCS = $(filter-out ai/test_%.c,$(wildcard ai/*.c))
+AI_OBJS = $(patsubst ai/%.c,ai/%.o,$(AI_SRCS))
+
 # Source files for conquer build (game) - exclude tests and alternate mains
 SRCS_GAME = $(filter-out mainA.c main_sdl2.c test_%.c,$(wildcard *.c))
 OBJS_GAME = $(patsubst %.c,%.o,$(SRCS_GAME))
@@ -37,10 +42,10 @@ HEXMAP_SPRITES_OBJS = hexmapG_sprites.o
 all: conquer conqrun
 
 conquer: CFLAGS += -DCONQUER_BUILD
-conquer: mainG.o $(filter-out main_sdl2.o stubs.o,$(GAME_OBJS)) stubs_conquer.o $(SDL2_DISPLAY_OBJS) display_dispatch.o
+conquer: mainG.o $(filter-out main_sdl2.o stubs.o,$(GAME_OBJS)) $(AI_OBJS) stubs_conquer.o $(SDL2_DISPLAY_OBJS) display_dispatch.o
 	$(CC) $(CFLAGS) -o $@ $^ $(SDL_LIBS) -lncurses -lcrypt
 
-conqrun: mainA.o $(filter-out main_sdl2.o,$(ADMIN_OBJS)) stubs_conqrun.o $(SDL2_DISPLAY_OBJS) display_dispatch.o
+conqrun: mainA.o $(filter-out main_sdl2.o,$(ADMIN_OBJS)) $(AI_OBJS) stubs_conqrun.o $(SDL2_DISPLAY_OBJS) display_dispatch.o
 	$(CC) $(CFLAGS) -o $@ $^ $(SDL_LIBS) -lncurses -lcrypt
 
 # Target-specific stub objects
@@ -51,6 +56,10 @@ stubs_conqrun.o: stubs.c
 	$(CC) $(CFLAGS) -DCONQRUN_BUILD -c $< -o $@
 
 %.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# AI module compilation (subdirectory)
+ai/%.o: ai/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # SDL2 specific compilation (needs SDL2 headers)
@@ -123,6 +132,6 @@ display_dispatch.o: display_dispatch.c display_dispatch.h
 	$(CC) $(CFLAGS) -DUSE_SDL2 -c $< -o $@
 
 clean:
-	rm -f *.o $(SDL2_DISPLAY_OBJS) $(HEXMAP_OBJS) $(SPRITE_OBJS) $(HEXMAP_SPRITES_OBJS) display_dispatch.o stubs_conquer.o stubs_conqrun.o conquer conqrun test_sdl2 test_hexmap test_sprite_loader test_hexmap_sprites
+	rm -f *.o ai/*.o $(SDL2_DISPLAY_OBJS) $(HEXMAP_OBJS) $(SPRITE_OBJS) $(HEXMAP_SPRITES_OBJS) display_dispatch.o stubs_conquer.o stubs_conqrun.o conquer conqrun test_sdl2 test_hexmap test_sprite_loader test_hexmap_sprites
 
 .PHONY: clean all test-sdl2 test-hexmap test-sprites test-hexmap-sprites

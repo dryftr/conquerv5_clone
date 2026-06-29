@@ -84,10 +84,11 @@ active_to_personality(int active)
 }
 
 /* ============================================================
- * Strategy name strings
+ * Turn strategy name strings (turn-level, distinct from
+ * decision.h AI_STRATEGY_* names)
  * ============================================================ */
 
-static const char *strategy_names[NUM_STRATEGIES] = {
+static const char *turn_strategy_names[NUM_STRATEGIES] = {
   "Expand",
   "Consolidate",
   "Attack",
@@ -97,10 +98,10 @@ static const char *strategy_names[NUM_STRATEGIES] = {
 };
 
 const char *
-ai_strategy_name(strategy_type_t strategy)
+ai_turn_strategy_name(strategy_type_t strategy)
 {
   if (strategy >= 0 && strategy < NUM_STRATEGIES)
-    return strategy_names[strategy];
+    return turn_strategy_names[strategy];
   return "Unknown";
 }
 
@@ -424,7 +425,7 @@ ai_turn_report(TURN_CONTEXT_PTR ctx)
   snprintf(ctx->report_summary, sizeof(ctx->report_summary),
            "Ntn %d: %s | T%d | S:%d M:%d B:%d R:%d | Threat:%d Opp:%d",
            ctx->nation_id,
-           ai_strategy_name(ctx->strategy),
+           ai_turn_strategy_name(ctx->strategy),
            ctx->turn_number,
            ctx->sectors_claimed,
            ctx->armies_moved,
@@ -474,7 +475,7 @@ ai_turn_execute(TURN_CONTEXT_PTR ctx, int nation_id)
     ai_turn_select_strategy(ctx);
 
   fprintf(fupdate, "  AI: Nation %d strategy: %s (threat=%d, opportunity=%d)\n",
-          nation_id, ai_strategy_name(ctx->strategy),
+          nation_id, ai_turn_strategy_name(ctx->strategy),
           ctx->threat_level, ctx->opportunity_level);
 
   /* Phase 5: Execute strategy */

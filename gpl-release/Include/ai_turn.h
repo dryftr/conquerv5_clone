@@ -171,7 +171,7 @@ int ai_turn_rovers(TURN_CONTEXT_PTR ctx);
 void ai_turn_report(TURN_CONTEXT_PTR ctx);
 
 /* Helper: get strategy name string */
-const char *ai_strategy_name(strategy_type_t strategy);
+const char *ai_turn_strategy_name(strategy_type_t strategy);
 
 /* Helper: calculate threat level for current nation */
 int ai_assess_threat(int nation_id);

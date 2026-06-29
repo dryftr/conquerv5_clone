@@ -1,0 +1,49 @@
+{
+  "name": "Warlord",
+  "description": "The Warlord lives for conquest. Military strength is the path to victory, and every decision serves the war machine. Diplomacy is a tool of convenience, not conviction.",
+
+  "risk_tolerance": 0.75,
+  "reaction_speed": 0.5,
+  "adaptation_rate": 0.3,
+  "patience": 3,
+
+  "priority_military": 0.40,
+  "priority_economy": 0.10,
+  "priority_expansion": 0.25,
+  "priority_defense": 0.10,
+  "priority_diplomacy": 0.03,
+  "priority_scouting": 0.07,
+  "priority_research": 0.05,
+
+  "build_military_units": 0.50,
+  "build_fortifications": 0.15,
+  "build_economic_buildings": 0.10,
+  "build_naval_units": 0.15,
+  "build_caravans": 0.10,
+
+  "startalloc_military": 0.50,
+  "startalloc_economy": 0.10,
+  "startalloc_expansion": 0.20,
+  "startalloc_defense": 0.10,
+  "startalloc_scouting": 0.10,
+
+  "scout_pct": 0.10,
+  "scout_range": 3,
+  "scout_explore_unknown_weight": 0.30,
+  "scout_revisit_stale_weight": 0.20,
+  "scout_border_priority_weight": 0.50,
+
+  "diplomacy_trust_initial": 0.20,
+  "diplomacy_trust_growth_rate": 0.02,
+  "diplomacy_trust_decay_rate": 0.05,
+  "diplomacy_betrayal_threshold": 0.30,
+  "diplomacy_alliance_willingness": 0.15,
+  "diplomacy_war_threshold": 0.40,
+  "diplomacy_default_stance": 5,
+
+  "attack_preference": 0.80,
+  "retreat_threshold": 0.30,
+  "siege_patience": 2,
+  "expansion_aggression": 0.70,
+  "territory_focus": 0.60
+}
