@@ -218,7 +218,12 @@ personality_load(const char *name, PERSONALITY_PTR pers)
   pers_get_double(json, "siege_patience", &pers->siege_patience);
   pers_get_double(json, "expansion_aggression", &pers->expansion_aggression);
   pers_get_double(json, "territory_focus", &pers->territory_focus);
-  
+
+  /* Parse economic parameters (Sprint 2.3) */
+  pers_get_int(json, "garrison_threshold", &pers->garrison_threshold);
+  pers_get_double(json, "reserve_pct", &pers->reserve_pct);
+  pers_get_int(json, "max_builds_per_turn", &pers->max_builds_per_turn);
+
   /* Parse base_priority weights */
   pers_get_double(json, "priority_military", &pers->base_priority.military);
   pers_get_double(json, "priority_economy", &pers->base_priority.economy);
@@ -438,4 +443,33 @@ personality_for_nation(PERSONALITY_REGISTRY_PTR registry,
   if (!registry->cache_loaded[type]) return NULL;
 
   return &registry->cache[type];
+}
+
+/* ------------------------------------------------------------------ */
+/* Difficulty Configuration                                             */
+/* ------------------------------------------------------------------ */
+
+static const DIFFICULTY_CONFIG difficulty_presets[DIFFICULTY_COUNT] = {
+  DIFF_EASY,
+  DIFF_NORMAL,
+  DIFF_HARD,
+  DIFF_BRUTAL
+};
+
+void
+personality_set_difficulty(PERSONALITY_REGISTRY_PTR registry,
+                            DifficultyLevel level)
+{
+  if (!registry) return;
+  if (level < 0 || level >= DIFFICULTY_COUNT) level = DIFFICULTY_NORMAL;
+
+  registry->difficulty_level = level;
+  registry->difficulty = difficulty_presets[level];
+}
+
+const DIFFICULTY_CONFIG *
+personality_get_difficulty(PERSONALITY_REGISTRY_PTR registry)
+{
+  if (!registry) return NULL;
+  return &registry->difficulty;
 }

@@ -25,6 +25,7 @@
 #include "action_expand.h"
 #include "ai_turn.h"
 #include "ai/ai_tactical.h"
+#include "ai/ai_economic.h"
 
 /* ============================================================
  * Internal: Strategy Weight Tables
@@ -501,6 +502,45 @@ ai_turn_tactical(TURN_CONTEXT_PTR ctx)
 }
 
 /* ============================================================
+ * Phase 6: Economic Decisions
+ *
+ * Evaluates economy, prioritizes builds, and starts construction
+ * based on personality weights and situational modifiers.
+ * ============================================================ */
+
+int
+ai_turn_economic(TURN_CONTEXT_PTR ctx)
+{
+  ECON_STATE econ_state;
+  int result;
+
+  if (ctx == NULL) return 0;
+
+  result = ai_economic_init(&econ_state, ctx->nation_id);
+  if (result != 0) {
+    fprintf(fupdate,
+            "  ECON: Nation %d economic init failed\n",
+            ctx->nation_id);
+    return 0;
+  }
+
+  fprintf(fupdate,
+          "  ECON: Nation %d entering economic phase "
+          "(max_builds=%d, reserve=%.0f%%)\n",
+          ctx->nation_id,
+          econ_state.max_builds_per_turn,
+          econ_state.reserve_pct * 100.0);
+
+  result = ai_economic_execute(&econ_state);
+
+  fprintf(fupdate,
+          "  ECON: Nation %d economic phase complete (%d builds)\n",
+          ctx->nation_id, result);
+
+  return result;
+}
+
+/* ============================================================
  * Main Entry: Execute Full AI Turn
  * ============================================================ */
 
@@ -545,15 +585,19 @@ ai_turn_execute(TURN_CONTEXT_PTR ctx, int nation_id)
   if (ctx->phase_flags & PHASE_TACTICAL)
     ctx->tactical_actions = ai_turn_tactical(ctx);
 
-  /* Phase 6: Execute strategy */
+  /* Phase 6: Economic decisions (build prioritization, resource allocation) */
+  if (ctx->phase_flags & PHASE_ECONOMY)
+    ctx->econ_builds = ai_turn_economic(ctx);
+
+  /* Phase 7: Execute strategy */
   if (ctx->phase_flags & (PHASE_EXPAND | PHASE_MILITARY | PHASE_BUILD))
     ai_turn_execute_strategy(ctx);
 
-  /* Phase 7: Rove remaining armies */
+  /* Phase 8: Rove remaining armies */
   if (ctx->phase_flags & PHASE_ROVE)
     ai_turn_rovers(ctx);
 
-  /* Phase 8: Generate report */
+  /* Phase 9: Generate report */
   if (ctx->phase_flags & PHASE_REPORT)
     ai_turn_report(ctx);
 

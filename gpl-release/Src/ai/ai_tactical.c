@@ -14,6 +14,9 @@
 #endif
 #include "ai/ai_tactical.h"
 #include "ai/personality.h"
+#ifdef MEMORYH
+#include "ai/ai_integration.h"
+#endif
 #include "ai/fog_of_war.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,12 +24,16 @@
 
 /* ============================================================
  * Personality → Threshold Mapping
+ *
+ * In game mode: reads from loaded PERSONALITY_STRUCT (JSON).
+ * In standalone mode: falls back to hardcoded defaults.
+ * Difficulty multipliers are applied AFTER personality values.
  * ============================================================ */
 
-/* Map personality type to combat thresholds */
 static void
 set_attack_thresholds(TACTICAL_STATE_PTR state, int personality_type)
 {
+    /* Default hardcoded values — used when no personality registry available */
     switch (personality_type) {
     case ACT_OVERT:   /* Warlord */
         state->attack_ratio = TAC_ATTACK_WARLORD;
@@ -52,7 +59,7 @@ set_attack_thresholds(TACTICAL_STATE_PTR state, int personality_type)
         state->caution = 30;
         state->border_focus = 40;
         break;
-    case ACT_GUERRILA: /* Merchant (uses guerrilla for economy) */
+    case ACT_GUERRILA: /* Merchant */
         state->attack_ratio = TAC_ATTACK_MERCHANT;
         state->retreat_ratio = TAC_RETREAT_MERCHANT;
         state->garrison_threshold = TAC_GARRISON_MERCHANT;
@@ -68,7 +75,7 @@ set_attack_thresholds(TACTICAL_STATE_PTR state, int personality_type)
         state->caution = 70;
         state->border_focus = 80;
         break;
-    default:          /* Static/Unknown — balanced */
+    default:
         state->attack_ratio = 130;
         state->retreat_ratio = 50;
         state->garrison_threshold = 50;
@@ -81,26 +88,88 @@ set_attack_thresholds(TACTICAL_STATE_PTR state, int personality_type)
 
 /* ============================================================
  * AI_TACTICAL_INIT — Initialize tactical state from personality
+ *
+ * In game mode: reads from PERSONALITY_REGISTRY (JSON-driven).
+ * Falls back to hardcoded thresholds if no registry available.
+ * Applies difficulty multipliers after personality values.
  * ============================================================ */
 
 int
 ai_tactical_init(TACTICAL_STATE_PTR state, int nation_id)
 {
-    if (state == NULL) return -1;
+  PERSONALITY_REGISTRY_PTR registry = NULL;
+  PERSONALITY_PTR pers = NULL;
+  const DIFFICULTY_CONFIG *diff = NULL;
 
-    memset(state, 0, sizeof(TACTICAL_STATE));
-    state->nation_id = nation_id;
+  if (state == NULL) return -1;
 
-    /* Get personality type for this nation */
-    int personality_type = ACT_OVERT; /* default: Warlord */
+  memset(state, 0, sizeof(TACTICAL_STATE));
+  state->nation_id = nation_id;
+
+#ifdef MEMORYH
+  /* Try to load from personality registry (JSON-driven) */
+  registry = ai_get_registry();
+  if (registry != NULL) {
+    pers = personality_for_nation(registry, nation_id);
+  }
+
+  if (pers != NULL && pers->loaded) {
+    /* JSON-driven values: convert 0.0-1.0 ranges to integer thresholds */
+    /* attack_preference (0.0-1.0) → attack_ratio (100-200)
+     *   0.0 = never attack → ratio 200 (need 2:1)
+     *   1.0 = always attack → ratio 100 (parity)
+     */
+    state->attack_ratio = (int)(200.0 - (pers->attack_preference * 100.0));
+
+    /* retreat_threshold (0.0-1.0) → retreat_ratio (20-80)
+     *   0.0 = never retreat → ratio 20
+     *   1.0 = retreat easily → ratio 80
+     */
+    state->retreat_ratio = (int)(20.0 + (pers->retreat_threshold * 60.0));
+
+    /* territory_focus (0.0-1.0) → garrison_threshold (20-80)
+     *   0.0 = minimal garrison → threshold 80
+     *   1.0 = garrison everything → threshold 20
+     */
+    state->garrison_threshold = (int)(80.0 - (pers->territory_focus * 60.0));
+
+    /* aggression/caution/border_focus from priority weights */
+    state->aggression = (int)(pers->attack_preference * 100.0);
+    state->caution = (int)((1.0 - pers->attack_preference) * 100.0);
+    state->border_focus = (int)(pers->base_priority.defense * 100.0);
+
+    fprintf(fupdate,
+            "  TAC: Nation %d loaded from personality '%s' "
+            "(attack_pref=%.2f, retreat=%.2f, territory=%.2f)\n",
+            nation_id, pers->name,
+            pers->attack_preference,
+            pers->retreat_threshold,
+            pers->territory_focus);
+  } else
+#endif
+  {
+    /* Fallback: hardcoded thresholds from personality type */
+    int personality_type = ACT_OVERT;
 #ifdef MEMORYH
     if (ntn_ptr != NULL && ntn_ptr->active > 0) {
-        personality_type = ntn_ptr->active;
+      personality_type = ntn_ptr->active;
     }
 #endif
-
     set_attack_thresholds(state, personality_type);
-    return 0;
+  }
+
+  /* Apply difficulty multipliers */
+  if (registry != NULL) {
+    diff = personality_get_difficulty(registry);
+    if (diff != NULL) {
+      /* Higher difficulty → lower attack_ratio = AI attacks more aggressively */
+      state->attack_ratio = (int)((double)state->attack_ratio / diff->attack_mult);
+      /* Higher difficulty → lower retreat_ratio = AI retreats less */
+      state->retreat_ratio = (int)((double)state->retreat_ratio / diff->attack_mult);
+    }
+  }
+
+  return 0;
 }
 
 /* ============================================================

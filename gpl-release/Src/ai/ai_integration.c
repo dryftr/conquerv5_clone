@@ -52,6 +52,13 @@ static FOW_STRUCT nation_fog[ABSMAXNTN];
 static int ai_initialized = 0;         /* 1 if registry loaded */
 static int fog_initialized[ABSMAXNTN]; /* 1 if fog state initialized for nation */
 
+/* Get the AI registry (read-only for other modules). */
+PERSONALITY_REGISTRY_PTR
+ai_get_registry(void)
+{
+  return &ai_registry;
+}
+
 /* ------------------------------------------------------------------ */
 /* Initialization                                                       */
 /* ------------------------------------------------------------------ */

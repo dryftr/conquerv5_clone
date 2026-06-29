@@ -147,6 +147,11 @@ typedef struct s_personality {
   double expansion_aggression;	/* how far from borders to expand	*/
   double territory_focus;	/* 0.0 (compact) to 1.0 (sprawling)	*/
 
+  /* Economic parameters (Sprint 2.3 — JSON-driven) */
+  int    garrison_threshold;	/* min threat level to place garrison (0-100)	*/
+  double reserve_pct;		/* fraction of treasury to reserve (0.0-1.0)	*/
+  int    max_builds_per_turn;	/* max buildings per turn (1-5)			*/
+
   /* Loaded flag */
   int loaded;			/* 1 if personality data is valid	*/
 } PERSONALITY_STRUCT, *PERSONALITY_PTR;
@@ -181,6 +186,37 @@ int personality_validate(PERSONALITY_PTR pers);
 void personality_dump(PERSONALITY_PTR pers);
 
 /* ------------------------------------------------------------------ */
+/* Difficulty Configuration                                              */
+/* ------------------------------------------------------------------ */
+
+/* Difficulty levels for AI behavior.
+ * Multipliers are applied AFTER personality JSON values.
+ * A Warlord on Easy is still aggressive, but less efficient.
+ * A Merchant on Hard is still economy-focused, but sharper.
+ */
+typedef enum {
+  DIFFICULTY_EASY = 0,		/* AI weaker: less efficient economy, worse combat ratios */
+  DIFFICULTY_NORMAL = 1,	/* AI balanced: personality values as-is */
+  DIFFICULTY_HARD = 2,		/* AI stronger: better economy, more aggressive combat */
+  DIFFICULTY_BRUTAL = 3,	/* AI relentless: maximum efficiency */
+  DIFFICULTY_COUNT		/* total difficulty levels */
+} DifficultyLevel;
+
+typedef struct s_difficulty_config {
+  double economy_mult;		/* multiplier on AI economy efficiency (0.5-1.5) */
+  double attack_mult;		/* multiplier on AI attack effectiveness (0.7-1.3) */
+  double reserve_pct_mult;	/* multiplier on AI treasury reserve (0.5-2.0) */
+  double build_cap_mult;		/* multiplier on max builds per turn (0.5-2.0) */
+  double vision_bonus;		/* extra vision range (0-2 sectors) */
+} DIFFICULTY_CONFIG, *DIFFICULTY_CONFIG_PTR;
+
+/* Difficulty presets */
+#define DIFF_EASY   { 0.6, 0.7, 0.5, 0.7, 0 }  /* AI struggles */
+#define DIFF_NORMAL { 1.0, 1.0, 1.0, 1.0, 0 }  /* AI plays fair */
+#define DIFF_HARD   { 1.3, 1.2, 1.5, 1.3, 1 }  /* AI sharper */
+#define DIFF_BRUTAL { 1.5, 1.3, 2.0, 2.0, 2 }  /* AI relentless */
+
+/* ------------------------------------------------------------------ */
 /* Multi-Personality Loading                                          */
 /* ------------------------------------------------------------------ */
 
@@ -200,6 +236,8 @@ typedef struct s_personality_registry {
   int            cache_loaded[PERSONALITY_COUNT];	/* 1 if cache[type] is valid	*/
   int            slot[PERSONALITY_MAX_NATIONS];	/* nation_id → personality type	*/
   int            count;				/* number of registered nations	*/
+  DIFFICULTY_CONFIG difficulty;		/* current difficulty multipliers	*/
+  DifficultyLevel  difficulty_level;	/* active difficulty level		*/
 } PERSONALITY_REGISTRY_STRUCT, *PERSONALITY_REGISTRY_PTR;
 
 /* Load all personality JSON files from the search path.
@@ -222,5 +260,12 @@ PERSONALITY_PTR personality_for_nation(PERSONALITY_REGISTRY_PTR registry,
 
 /* Initialize a personality registry (zero all slots, mark cache unloaded). */
 void personality_registry_init(PERSONALITY_REGISTRY_PTR registry);
+
+/* Set difficulty level. Applies multipliers to all personality-derived values. */
+void personality_set_difficulty(PERSONALITY_REGISTRY_PTR registry,
+                                DifficultyLevel level);
+
+/* Get the current difficulty config. Returns read-only pointer. */
+const DIFFICULTY_CONFIG *personality_get_difficulty(PERSONALITY_REGISTRY_PTR registry);
 
 #endif /* PERSONALITY_H */
