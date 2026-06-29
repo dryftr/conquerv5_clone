@@ -145,6 +145,7 @@ typedef struct s_personality {
 
   /* Expansion */
   double expansion_aggression;	/* how far from borders to expand	*/
+  int   claim_cap;                /* max sectors to claim/turn (2-8)  */
   double territory_focus;	/* 0.0 (compact) to 1.0 (sprawling)	*/
 
   /* Economic parameters (Sprint 2.3 — JSON-driven) */
@@ -207,14 +208,16 @@ typedef struct s_difficulty_config {
   double attack_mult;		/* multiplier on AI attack effectiveness (0.7-1.3) */
   double reserve_pct_mult;	/* multiplier on AI treasury reserve (0.5-2.0) */
   double build_cap_mult;		/* multiplier on max builds per turn (0.5-2.0) */
+  double expansion_mult;		/* multiplier on AI claim cap per turn (0.5-2.0) */
+  int    garrison_bonus;		/* extra garrison troops on Hard/Brutal (0-2) */
   double vision_bonus;		/* extra vision range (0-2 sectors) */
 } DIFFICULTY_CONFIG, *DIFFICULTY_CONFIG_PTR;
 
 /* Difficulty presets */
-#define DIFF_EASY   { 0.6, 0.7, 0.5, 0.7, 0 }  /* AI struggles */
-#define DIFF_NORMAL { 1.0, 1.0, 1.0, 1.0, 0 }  /* AI plays fair */
-#define DIFF_HARD   { 1.3, 1.2, 1.5, 1.3, 1 }  /* AI sharper */
-#define DIFF_BRUTAL { 1.5, 1.3, 2.0, 2.0, 2 }  /* AI relentless */
+#define DIFF_EASY   { 0.6, 0.7, 0.5, 0.7, 0.6, 0 }  /* AI struggles */
+#define DIFF_NORMAL { 1.0, 1.0, 1.0, 1.0, 1.0, 0 }  /* AI plays fair */
+#define DIFF_HARD   { 1.3, 1.2, 1.5, 1.3, 1.2, 1 }  /* AI sharper */
+#define DIFF_BRUTAL { 1.5, 1.3, 2.0, 2.0, 1.5, 2 }  /* AI relentless */
 
 /* ------------------------------------------------------------------ */
 /* Multi-Personality Loading                                          */

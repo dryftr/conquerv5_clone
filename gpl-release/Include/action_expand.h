@@ -78,6 +78,9 @@ typedef struct s_expand_state {
   int attack_threshold;    /* Min strength advantage ratio to attack (e.g., 120 = need 20% more) */
   int retreat_threshold;   /* Retreat if enemy exceeds this ratio */
 
+  /* Claim cap: max sectors to claim per turn (from personality expansion_aggression) */
+  int claim_cap;           /* Max sectors claimable per turn (2-8, personality-driven) */
+
   /* Build preferences (personality-weighted) */
   int pref_fortify;        /* Preference for fortification */
   int pref_economy;        /* Preference for economic building */

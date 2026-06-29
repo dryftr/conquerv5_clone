@@ -137,12 +137,15 @@ clear_ai_armies(void)
 static void test_init_killer(void)
 {
   EXPAND_STATE state;
+  /* In the personality mapping, ACT_KILLER = Strategist (balanced).
+   * The Warlord is ACT_OVERT. Tests verify Strategist thresholds. */
+  world.np[AI_NATION]->active = ACT_KILLER;
   expand_result_t r = action_expand_init(&state, AI_NATION);
-  ASSERT_EQ(r, EXPAND_OK, "Killer init should succeed");
-  ASSERT_EQ(state.attack_threshold, ATTACK_THRESH_WARLORD, "Killer attack threshold");
-  ASSERT_EQ(state.retreat_threshold, RETREAT_THRESH_WARLORD, "Killer retreat threshold");
-  ASSERT_EQ(state.pref_military, 5, "Killer military pref");
-  ASSERT_EQ(state.pref_economy, 1, "Killer economy pref");
+  ASSERT_EQ(r, EXPAND_OK, "Killer/Strategist init should succeed");
+  ASSERT_EQ(state.attack_threshold, ATTACK_THRESH_STRATEGIST, "Strategist attack threshold");
+  ASSERT_EQ(state.retreat_threshold, RETREAT_THRESH_STRATEGIST, "Strategist retreat threshold");
+  ASSERT_EQ(state.pref_military, 3, "Strategist military pref (balanced)");
+  ASSERT_EQ(state.pref_economy, 3, "Strategist economy pref (balanced)");
 }
 
 static void test_init_null(void)
@@ -157,7 +160,7 @@ static void test_init_overt(void)
   world.np[AI_NATION]->active = ACT_OVERT;
   expand_result_t r = action_expand_init(&state, AI_NATION);
   ASSERT_EQ(r, EXPAND_OK, "Overt init should succeed");
-  ASSERT_EQ(state.attack_threshold, ATTACK_THRESH_PIONEER, "Overt attack threshold");
+  ASSERT_EQ(state.attack_threshold, ATTACK_THRESH_WARLORD, "Overt/Warlord attack threshold");
   ASSERT_TRUE(state.weight_expansion > state.weight_defense,
               "Overt should prioritize expansion over defense");
   world.np[AI_NATION]->active = ACT_KILLER;
@@ -555,34 +558,36 @@ static void test_free_null_targets(void)
 
 static void test_killer_vs_static(void)
 {
-  EXPAND_STATE killer, stat;
+  EXPAND_STATE overt_warlord, stat;
 
-  world.np[AI_NATION]->active = ACT_KILLER;
-  action_expand_init(&killer, AI_NATION);
+  /* ACT_OVERT = Warlord (aggressive expansion), ACT_STATIC = passive */
+  world.np[AI_NATION]->active = ACT_OVERT;
+  action_expand_init(&overt_warlord, AI_NATION);
 
   world.np[AI_NATION]->active = ACT_STATIC;
   action_expand_init(&stat, AI_NATION);
 
-  ASSERT_TRUE(killer.attack_threshold < stat.attack_threshold,
-              "Killer more aggressive than Static");
-  ASSERT_TRUE(killer.weight_military > stat.weight_military,
-              "Killer has higher military weight");
-  ASSERT_TRUE(killer.weight_defense < stat.weight_defense,
-              "Killer has lower defense weight");
+  ASSERT_TRUE(overt_warlord.attack_threshold < stat.attack_threshold,
+              "Warlord more aggressive than Static");
+  ASSERT_TRUE(overt_warlord.weight_military > stat.weight_military,
+              "Warlord has higher military weight");
+  ASSERT_TRUE(overt_warlord.weight_defense < stat.weight_defense,
+              "Warlord has lower defense weight");
 }
 
 static void test_killer_vs_fortress(void)
 {
-  EXPAND_STATE killer, fortress;
+  EXPAND_STATE overt_warlord, fortress;
 
-  world.np[AI_NATION]->active = ACT_KILLER;
-  action_expand_init(&killer, AI_NATION);
+  /* ACT_OVERT = Warlord, ACT_ENFORCE = Fortress */
+  world.np[AI_NATION]->active = ACT_OVERT;
+  action_expand_init(&overt_warlord, AI_NATION);
 
   world.np[AI_NATION]->active = ACT_ENFORCE;
   action_expand_init(&fortress, AI_NATION);
 
-  ASSERT_TRUE(killer.attack_threshold < fortress.attack_threshold,
-              "Killer attacks more aggressively than Fortress");
+  ASSERT_TRUE(overt_warlord.attack_threshold < fortress.attack_threshold,
+              "Warlord attacks more aggressively than Fortress");
   ASSERT_TRUE(fortress.weight_defense > fortress.weight_military,
               "Fortress prioritizes defense over offense");
 }

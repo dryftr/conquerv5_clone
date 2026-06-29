@@ -217,6 +217,7 @@ personality_load(const char *name, PERSONALITY_PTR pers)
   pers_get_double(json, "retreat_threshold", &pers->retreat_threshold);
   pers_get_double(json, "siege_patience", &pers->siege_patience);
   pers_get_double(json, "expansion_aggression", &pers->expansion_aggression);
+  pers_get_int(json, "claim_cap", &pers->claim_cap);
   pers_get_double(json, "territory_focus", &pers->territory_focus);
 
   /* Parse economic parameters (Sprint 2.3) */

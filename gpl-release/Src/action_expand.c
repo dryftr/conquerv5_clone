@@ -24,6 +24,10 @@
 #include "statusX.h"
 #include "executeX.h"
 #include "worldX.h"
+#ifdef MEMORYH
+#include "ai/personality.h"
+#include "ai/ai_integration.h"
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,10 +36,12 @@
  * Internal helpers
  * ============================================================ */
 
-/* Set attack/retreat thresholds based on nation personality.
- * In v1 we use flat defaults; personality-specific tuning is Sprint 2. */
+/* Set hardcoded fallback thresholds from nation active type.
+ * Used only when no personality registry is loaded (JSON-first with
+ * hardcoded fallback pattern). Values mirror personality JSON weights.
+ * See Auxil/personalities/*.json for the canonical values. */
 static void
-set_personality_thresholds(EXPAND_STATE_PTR state, int nation_id)
+set_default_thresholds(EXPAND_STATE_PTR state, int active)
 {
   /* Default: balanced/strategist */
   state->attack_threshold = ATTACK_THRESH_STRATEGIST;
@@ -47,14 +53,10 @@ set_personality_thresholds(EXPAND_STATE_PTR state, int nation_id)
   state->weight_expansion = 40;
   state->weight_defense = 40;
   state->weight_economy = 40;
-
-  /* Switch on the full active type, not aggression level.
-   * n_aggression() only returns 0 or 1 (passive/aggressive).
-   * The active field encodes alignment + aggression + NPC status. */
-  int active = ntn_ptr->active;
+  state->claim_cap = 5;
 
   switch (active) {
-    case ACT_KILLER:
+    case ACT_OVERT:     /* Warlord */
       state->attack_threshold = ATTACK_THRESH_WARLORD;
       state->retreat_threshold = RETREAT_THRESH_WARLORD;
       state->pref_fortify = 3;
@@ -64,8 +66,9 @@ set_personality_thresholds(EXPAND_STATE_PTR state, int nation_id)
       state->weight_expansion = 60;
       state->weight_defense = 30;
       state->weight_economy = 10;
+      state->claim_cap = 5;
       break;
-    case ACT_OVERT:
+    case ACT_MOBILE:    /* Pioneer */
       state->attack_threshold = ATTACK_THRESH_PIONEER;
       state->retreat_threshold = RETREAT_THRESH_PIONEER;
       state->pref_fortify = 1;
@@ -75,8 +78,9 @@ set_personality_thresholds(EXPAND_STATE_PTR state, int nation_id)
       state->weight_expansion = 70;
       state->weight_defense = 20;
       state->weight_economy = 30;
+      state->claim_cap = 7;
       break;
-    case ACT_MOBILE:
+    case ACT_KILLER:    /* Strategist */
       state->attack_threshold = ATTACK_THRESH_STRATEGIST;
       state->retreat_threshold = RETREAT_THRESH_STRATEGIST;
       state->pref_fortify = 3;
@@ -86,8 +90,11 @@ set_personality_thresholds(EXPAND_STATE_PTR state, int nation_id)
       state->weight_expansion = 40;
       state->weight_defense = 40;
       state->weight_economy = 40;
+      state->claim_cap = 5;
       break;
-    case ACT_ENFORCE:
+    /* ACT_KILLER falls through to Strategist defaults above */
+    /* Merchant (GUERRILA) is JSON-only — no hardcoded fallback. */
+    case ACT_ENFORCE:   /* Fortress */
       state->attack_threshold = ATTACK_THRESH_FORTRESS;
       state->retreat_threshold = RETREAT_THRESH_FORTRESS;
       state->pref_fortify = 5;
@@ -97,10 +104,10 @@ set_personality_thresholds(EXPAND_STATE_PTR state, int nation_id)
       state->weight_expansion = 10;
       state->weight_defense = 80;
       state->weight_economy = 30;
+      state->claim_cap = 3;
       break;
     case ACT_STATIC:
-      /* Mostly passive, minimal expansion */
-      state->attack_threshold = 250; /* only attack with overwhelming force */
+      state->attack_threshold = 250;
       state->retreat_threshold = 85;
       state->pref_fortify = 4;
       state->pref_economy = 4;
@@ -109,6 +116,7 @@ set_personality_thresholds(EXPAND_STATE_PTR state, int nation_id)
       state->weight_expansion = 5;
       state->weight_defense = 60;
       state->weight_economy = 50;
+      state->claim_cap = 2;
       break;
     default:
       break;
@@ -119,18 +127,123 @@ set_personality_thresholds(EXPAND_STATE_PTR state, int nation_id)
  * Public API Implementation
  * ============================================================ */
 
-/* ACTION_EXPAND_INIT — set up expand state from personality + context */
+/* ACTION_EXPAND_INIT — set up expand state from personality + context
+ *
+ * JSON-driven: reads personality weights and thresholds from
+ * PERSONALITY_STRUCT. Falls back to hardcoded defaults if no registry.
+ * Difficulty multipliers applied after personality values.
+ */
 expand_result_t
 action_expand_init(EXPAND_STATE_PTR state, int nation_id)
 {
+#ifdef MEMORYH
+  PERSONALITY_REGISTRY_PTR registry = NULL;
+  PERSONALITY_PTR pers = NULL;
+  const DIFFICULTY_CONFIG *diff = NULL;
+#endif
+
   if (state == NULL) return EXPAND_ERROR;
 
   memset(state, 0, sizeof(EXPAND_STATE));
   state->nation_id = nation_id;
   state->turn_number = TURN;
 
-  /* Set thresholds from personality (aggression level) */
-  set_personality_thresholds(state, nation_id);
+#ifdef MEMORYH
+  /* Try to load from personality registry (JSON-driven) */
+  registry = ai_get_registry();
+  if (registry != NULL) {
+    pers = personality_for_nation(registry, nation_id);
+  }
+
+  if (pers != NULL && pers->loaded) {
+    /* JSON-driven thresholds.
+     * attack_preference is 0.0-1.0 (0=never attack, 1=always attack).
+     * Convert to threshold ratio: higher preference = lower threshold.
+     * 100 = even fight, 200 = need 2:1 advantage, etc.
+     * attack_preference 0.8 → threshold 110 (attack with 10% advantage)
+     * attack_preference 0.2 → threshold 200 (need 2:1 advantage)
+     */
+    state->attack_threshold = (int)(100.0 + (1.0 - pers->attack_preference) * 125.0);
+    if (state->attack_threshold < 105) state->attack_threshold = 105;
+    if (state->attack_threshold > 250) state->attack_threshold = 250;
+
+    /* retreat_threshold is 0.0-1.0 (0=never retreat, 1.0=retreat at any threat).
+     * Convert to integer: higher value = more cautious.
+     * retreat_threshold 0.3 → 30 (retreat only when heavily outmatched)
+     * retreat_threshold 0.6 → 60 (retreat at moderate disadvantage)
+     */
+    state->retreat_threshold = (int)(pers->retreat_threshold * 100.0);
+    if (state->retreat_threshold < 20) state->retreat_threshold = 20;
+    if (state->retreat_threshold > 90) state->retreat_threshold = 90;
+
+    /* Priority weights: JSON 0.0-1.0 → integer 0-100 for legacy compatibility */
+    state->weight_military  = (int)(pers->priority.military  * 100.0);
+    state->weight_expansion = (int)(pers->priority.expansion * 100.0);
+    state->weight_defense   = (int)(pers->priority.defense   * 100.0);
+    state->weight_economy   = (int)(pers->priority.economy   * 100.0);
+
+    /* Build preferences: JSON 0.0-1.0 → integer 1-5 scale */
+    state->pref_fortify   = (int)(pers->build_pref.fortifications * 5.0) + 1;
+    state->pref_economy   = (int)(pers->build_pref.economic_buildings * 5.0) + 1;
+    state->pref_military  = (int)(pers->build_pref.military_units * 5.0) + 1;
+
+    /* Claim cap from personality JSON. If not set (0), compute from
+     * expansion_aggression: 0.7 → cap 7, 0.2 → cap 2. */
+    state->claim_cap = pers->claim_cap;
+    if (state->claim_cap <= 0) {
+      state->claim_cap = (int)(pers->expansion_aggression * 10.0);
+      if (state->claim_cap < 2) state->claim_cap = 2;
+      if (state->claim_cap > 8) state->claim_cap = 8;
+    }
+
+    fprintf(fupdate,
+            "  EXPAND: Nation %d loaded from personality '%s' "
+            "(atk_thresh=%d, ret_thresh=%d, claim_cap=%d)\n",
+            nation_id, pers->name,
+            state->attack_threshold, state->retreat_threshold,
+            state->claim_cap);
+  } else
+#endif
+  {
+    /* Fallback: hardcoded defaults from active type.
+     * In game build: read from nation struct.
+     * In standalone tests: read from mock world. */
+    int active = ACT_OVERT;
+#ifdef MEMORYH
+    if (ntn_ptr != NULL && ntn_ptr->active > 0) {
+      active = ntn_ptr->active;
+    }
+#else
+    /* Standalone test mode: read from world.np[nation_id] */
+    if (world.np[nation_id] != NULL) {
+      active = world.np[nation_id]->active;
+    }
+#endif
+    set_default_thresholds(state, active);
+  }
+
+  /* Apply difficulty multipliers (JSON-driven path only) */
+#ifdef MEMORYH
+  if (registry != NULL) {
+    diff = personality_get_difficulty(registry);
+    if (diff != NULL) {
+      /* Harder difficulty → AI attacks with lower thresholds */
+      state->attack_threshold = (int)(
+        (double)state->attack_threshold * diff->attack_mult);
+      if (state->attack_threshold < 105) state->attack_threshold = 105;
+
+      /* Easier difficulty → AI retreats sooner */
+      state->retreat_threshold = (int)(
+        (double)state->retreat_threshold / diff->attack_mult);
+      if (state->retreat_threshold < 20) state->retreat_threshold = 20;
+
+      /* Easier difficulty → fewer claims per turn */
+      state->claim_cap = (int)(
+        (double)state->claim_cap * diff->expansion_mult);
+      if (state->claim_cap < 1) state->claim_cap = 1;
+    }
+  }
+#endif
 
   return EXPAND_OK;
 }
@@ -421,7 +534,9 @@ ai_claim_sector(EXPAND_STATE_PTR state)
 {
   int claimed = 0;
   int x, y;
-  int max_claims = 5; /* v1: claim at most 5 sectors per turn */
+  /* Use personality-driven claim cap instead of hardcoded limit */
+  int max_claims = state->claim_cap;
+  if (max_claims <= 0) max_claims = 5; /* safety fallback */
 
   /* Early exit: if we have no territory at all, we can't claim */
   if (!ai_has_any_territory(state->nation_id)) {

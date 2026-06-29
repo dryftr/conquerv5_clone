@@ -41,5 +41,6 @@
   "territory_focus": 0.5,
   "garrison_threshold": 40,
   "reserve_pct": 0.25,
-  "max_builds_per_turn": 4
+  "max_builds_per_turn": 4,
+  "claim_cap": 5
 }
